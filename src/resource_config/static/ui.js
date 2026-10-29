@@ -145,7 +145,8 @@ export function schemaForm(schema, value, { onChange, hide = [], groups = null, 
       const hint = hints[name] || {};
       const control = controlFor(name, prop, defs, state[name], hint, defaults[name], (v) => { state[name] = v; onChange && onChange(name, v, state); });
       const label = h('span', { class: 'k' }, prettyName(name), hint.tooltip ? [' ', info(hint.tooltip)] : null);
-      const show = hint.show_when ? () => Object.entries(hint.show_when).every(([k, v]) => String(state[k] ?? defaults[k] ?? '') === String(v)) : null;
+      const matches = (v, actual) => (Array.isArray(v) ? v.map(String).includes(actual) : String(v) === actual);
+      const show = hint.show_when ? () => Object.entries(hint.show_when).every(([k, v]) => matches(v, String(state[k] ?? defaults[k] ?? ''))) : null;
       const row = [label, h('span', { class: 'v', style: { display: 'flex', alignItems: 'center', gap: '6px' } }, control, hint.unit ? note(hint.unit) : null)];
       if (show) { const update = () => row.forEach((r) => r.classList.toggle('hidden', !show())); update(); container.addEventListener('rc:change', update); }
       grid.append(...row);

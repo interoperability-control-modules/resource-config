@@ -57,7 +57,7 @@ def schema_of(model) -> dict:
 
 
 def _annotate(schema: dict, model) -> dict:
-    """Add ``x-hints`` per property from json_schema_extra and the fallbacks."""
+    """Add ``x-hints`` per property from json_schema_extra, with fallbacks for models that carry none."""
     props = schema.get('properties', {})
     required = set(schema.get('required', []))
     fields = getattr(model, 'model_fields', {})
@@ -80,7 +80,8 @@ def _annotate(schema: dict, model) -> dict:
             hint['advanced'] = True
         hints[name] = hint
     model_name = getattr(model, '__name__', '')
-    if model_name == 'ModbusRemoteConfig':
+    carries_hints = any(isinstance(f.json_schema_extra, dict) and 'group' in f.json_schema_extra for f in fields.values())
+    if model_name == 'ModbusRemoteConfig' and not carries_hints:     # fallback for interfaces released before the hints
         for group, names in MODBUS_GROUPS.items():
             for n in names:
                 if n in hints:

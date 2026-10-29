@@ -391,28 +391,45 @@
     "properties": {
      "apdu_retries": {
       "default": 3,
+      "group": "Protocol and timing",
       "minimum": 0,
+      "order": 110,
       "title": "Apdu Retries",
       "type": "integer"
      },
      "apdu_timeout": {
       "default": 3.0,
+      "description": "How long the proxy waits for this device to answer one request; the first device to launch the shared proxy wins.",
       "exclusiveMinimum": 0,
+      "group": "Protocol and timing",
+      "order": 100,
       "title": "Apdu Timeout",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "bacnet_port": {
+      "advanced": true,
       "default": 0,
+      "description": "The proxy's UDP port; 0 means 47808.",
+      "group": "Connection",
+      "order": 40,
       "title": "Bacnet Port",
       "type": "integer"
      },
      "cov_lifetime": {
+      "advanced": true,
       "default": 180.0,
+      "description": "Lifetime requested for change-of-value subscriptions.",
+      "group": "Protocol and timing",
+      "order": 130,
       "title": "Cov Lifetime",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "debug": {
+      "advanced": true,
       "default": false,
+      "order": 40,
       "title": "Debug",
       "type": "boolean"
      },
@@ -426,22 +443,41 @@
        }
       ],
       "default": null,
+      "description": "Client: the device to reach.",
+      "group": "Connection",
+      "order": 10,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Device Address"
      },
      "device_id": {
+      "description": "The BACnet device instance number.",
+      "group": "Connection",
       "minimum": 0,
+      "order": 20,
       "title": "Device Id",
       "type": "integer"
      },
      "driver_role": {
       "$ref": "#/$defs/DriverRole",
-      "default": "client"
+      "default": "client",
+      "description": "client reaches a BACnet device; server serves the registry as a device of its own.",
+      "group": "Device",
+      "order": 20
      },
      "driver_type": {
+      "description": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake).",
+      "group": "Device",
+      "order": 10,
       "title": "Driver Type",
       "type": "string"
      },
      "heart_beat_point": {
+      "advanced": false,
       "anyOf": [
        {
         "type": "string"
@@ -451,28 +487,42 @@
        }
       ],
       "default": null,
+      "description": "A point the driver toggles on every poll so the device can tell the platform is alive.",
+      "group": "Polling",
+      "order": 30,
       "title": "Heart Beat Point"
      },
      "local_interface": {
       "default": "0.0.0.0/32",
+      "description": "The local interface (CIDR) the proxy binds.",
       "format": "ipvanyinterface",
+      "group": "Connection",
+      "order": 30,
       "title": "Local Interface",
       "type": "string"
      },
      "max_per_request": {
       "default": 24,
+      "description": "Points per ReadPropertyMultiple request.",
+      "group": "Protocol and timing",
       "minimum": 0,
+      "order": 70,
       "title": "Max Per Request",
       "type": "integer"
      },
      "min_priority": {
+      "advanced": true,
       "default": 8,
+      "description": "Lowest BACnet write priority this device accepts.",
+      "group": "Protocol and timing",
       "maximum": 16,
       "minimum": 1,
+      "order": 90,
       "title": "Min Priority",
       "type": "integer"
      },
      "module": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -482,37 +532,62 @@
        }
       ],
       "default": null,
+      "description": "Import path of a custom interface module when the driver type is not an installed interface.",
+      "order": 50,
       "title": "Module"
      },
      "object_name": {
       "default": "VOLTTRON served device",
+      "description": "Server: the served device object's name.",
+      "group": "Connection",
+      "order": 60,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Object Name",
       "type": "string"
      },
      "persistent_connection": {
+      "advanced": true,
       "default": true,
       "description": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message.",
+      "group": "Proxy",
+      "order": 170,
       "title": "Persistent Connection",
       "type": "boolean"
      },
      "ping_retry_interval": {
+      "advanced": true,
       "default": 5.0,
+      "group": "Protocol and timing",
+      "order": 140,
       "title": "Ping Retry Interval",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "plugins": {
+      "advanced": true,
       "default": [],
       "items": {
        "type": "string"
       },
+      "order": 60,
       "title": "Plugins",
       "type": "array"
      },
      "registration_timeout": {
+      "advanced": true,
       "default": 30.0,
       "exclusiveMinimum": 0,
+      "group": "Proxy",
+      "order": 160,
       "title": "Registration Timeout",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "served_port": {
       "anyOf": [
@@ -525,9 +600,20 @@
        }
       ],
       "default": null,
+      "description": "Server: the UDP port the served device answers on (an offset from 47808 or an absolute port; must differ from bacnet_port).",
+      "group": "Connection",
+      "order": 50,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Served Port"
      },
      "time_synchronization_interval": {
+      "advanced": true,
       "anyOf": [
        {
         "minimum": 0,
@@ -538,9 +624,14 @@
        }
       ],
       "default": null,
-      "title": "Time Synchronization Interval"
+      "description": "How often to send the device a time synchronization; blank never.",
+      "group": "Protocol and timing",
+      "order": 150,
+      "title": "Time Synchronization Interval",
+      "unit": "s"
      },
      "timeout": {
+      "advanced": true,
       "anyOf": [
        {
         "minimum": 0,
@@ -551,10 +642,17 @@
        }
       ],
       "default": null,
-      "title": "Timeout"
+      "description": "How long to wait for the proxy's answer; blank derives it from the APDU settings and max_per_request.",
+      "group": "Protocol and timing",
+      "order": 120,
+      "title": "Timeout",
+      "unit": "s"
      },
      "use_read_multiple": {
+      "advanced": true,
       "default": true,
+      "group": "Protocol and timing",
+      "order": 80,
       "title": "Use Read Multiple",
       "type": "boolean"
      }
@@ -567,53 +665,97 @@
     "type": "object",
     "x-hints": {
      "apdu_retries": {
-      "advanced": true
+      "advanced": true,
+      "group": "Protocol and timing",
+      "order": 110
      },
      "apdu_timeout": {
-      "advanced": true,
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 100,
+      "tooltip": "How long the proxy waits for this device to answer one request; the first device to launch the shared proxy wins.",
       "unit": "s"
      },
      "bacnet_port": {
-      "advanced": true
+      "advanced": false,
+      "tooltip": "The proxy's UDP port; 0 means 47808."
      },
      "cov_lifetime": {
-      "advanced": true
+      "advanced": false,
+      "tooltip": "Lifetime requested for change-of-value subscriptions."
      },
      "debug": {
-      "advanced": true
+      "advanced": true,
+      "order": 40
      },
      "device_address": {
-      "advanced": true
+      "advanced": false,
+      "tooltip": "Client: the device to reach."
      },
      "device_id": {
-      "advanced": false
+      "advanced": false,
+      "group": "Connection",
+      "order": 20,
+      "tooltip": "The BACnet device instance number."
      },
      "driver_role": {
-      "advanced": true
+      "advanced": false,
+      "group": "Device",
+      "order": 20,
+      "tooltip": "client reaches a BACnet device; server serves the registry as a device of its own."
      },
      "driver_type": {
-      "advanced": false
+      "advanced": false,
+      "group": "Device",
+      "order": 10,
+      "tooltip": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake)."
      },
      "heart_beat_point": {
-      "advanced": true
+      "advanced": false,
+      "group": "Polling",
+      "order": 30,
+      "tooltip": "A point the driver toggles on every poll so the device can tell the platform is alive."
      },
      "local_interface": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 30,
+      "tooltip": "The local interface (CIDR) the proxy binds."
      },
      "max_per_request": {
-      "advanced": true
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 70,
+      "tooltip": "Points per ReadPropertyMultiple request."
      },
      "min_priority": {
-      "advanced": true
+      "advanced": true,
+      "group": "Protocol and timing",
+      "order": 90,
+      "tooltip": "Lowest BACnet write priority this device accepts."
      },
      "module": {
-      "advanced": true
+      "advanced": true,
+      "order": 50,
+      "tooltip": "Import path of a custom interface module when the driver type is not an installed interface."
      },
      "object_name": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 60,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: the served device object's name."
      },
      "persistent_connection": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 170,
       "tooltip": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message."
      },
      "ping_retry_interval": {
@@ -621,25 +763,44 @@
       "unit": "s"
      },
      "plugins": {
-      "advanced": true
+      "advanced": true,
+      "order": 60
      },
      "registration_timeout": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 160,
       "unit": "s"
      },
      "served_port": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 50,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: the UDP port the served device answers on (an offset from 47808 or an absolute port; must differ from bacnet_port)."
      },
      "time_synchronization_interval": {
-      "advanced": true,
+      "advanced": false,
+      "tooltip": "How often to send the device a time synchronization; blank never.",
       "unit": "s"
      },
      "timeout": {
       "advanced": true,
+      "group": "Protocol and timing",
+      "order": 120,
+      "tooltip": "How long to wait for the proxy's answer; blank derives it from the APDU settings and max_per_request.",
       "unit": "s"
      },
      "use_read_multiple": {
-      "advanced": true
+      "advanced": true,
+      "group": "Protocol and timing",
+      "order": 80
      }
     }
    },
@@ -1117,27 +1278,49 @@
     "properties": {
      "bind_host": {
       "default": "0.0.0.0",
+      "description": "Outstation: the interface to listen on.",
+      "group": "Connection",
+      "order": 20,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Bind Host",
       "type": "string"
      },
      "control_mode": {
       "$ref": "#/$defs/ControlMode",
-      "default": "direct"
+      "default": "direct",
+      "description": "direct operate or select-before-operate.",
+      "group": "Protocol and timing",
+      "order": 70
      },
      "debug": {
+      "advanced": true,
       "default": false,
+      "order": 40,
       "title": "Debug",
       "type": "boolean"
      },
      "driver_role": {
       "$ref": "#/$defs/DriverRole",
-      "default": "master"
+      "default": "master",
+      "description": "master reaches an outstation; outstation serves the registry to a master.",
+      "group": "Device",
+      "order": 20
      },
      "driver_type": {
+      "description": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake).",
+      "group": "Device",
+      "order": 10,
       "title": "Driver Type",
       "type": "string"
      },
      "heart_beat_point": {
+      "advanced": false,
       "anyOf": [
        {
         "type": "string"
@@ -1147,25 +1330,39 @@
        }
       ],
       "default": null,
+      "description": "A point the driver toggles on every poll so the device can tell the platform is alive.",
+      "group": "Polling",
+      "order": 30,
       "title": "Heart Beat Point"
      },
      "integrity_poll_interval": {
       "default": 3600.0,
+      "description": "Seconds between integrity polls; 0 disables them, one always runs when the connection opens.",
+      "group": "Protocol and timing",
       "minimum": 0,
+      "order": 100,
       "title": "Integrity Poll Interval",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "link_reset": {
+      "advanced": true,
       "default": true,
+      "group": "Protocol and timing",
+      "order": 130,
       "title": "Link Reset",
       "type": "boolean"
      },
      "master_id": {
       "default": 2,
+      "description": "DNP3 link address of the master.",
+      "group": "Connection",
+      "order": 40,
       "title": "Master Id",
       "type": "integer"
      },
      "master_ip": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -1175,9 +1372,13 @@
        }
       ],
       "default": null,
+      "description": "Accepted from old configurations and not used.",
+      "group": "Connection",
+      "order": 60,
       "title": "Master Ip"
      },
      "module": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -1187,10 +1388,15 @@
        }
       ],
       "default": null,
+      "description": "Import path of a custom interface module when the driver type is not an installed interface.",
+      "order": 50,
       "title": "Module"
      },
      "outstation_id": {
       "default": 1,
+      "description": "DNP3 link address of the outstation.",
+      "group": "Connection",
+      "order": 50,
       "title": "Outstation Id",
       "type": "integer"
      },
@@ -1204,19 +1410,33 @@
        }
       ],
       "default": null,
+      "description": "Master: the outstation's address.",
+      "group": "Connection",
+      "order": 10,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Outstation Ip"
      },
      "persistent_connection": {
+      "advanced": true,
       "default": true,
       "description": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message.",
+      "group": "Proxy",
+      "order": 170,
       "title": "Persistent Connection",
       "type": "boolean"
      },
      "plugins": {
+      "advanced": true,
       "default": [],
       "items": {
        "type": "string"
       },
+      "order": 60,
       "title": "Plugins",
       "type": "array"
      },
@@ -1224,18 +1444,24 @@
       "default": [
        0
       ],
+      "description": "Event classes each poll asks for.",
+      "group": "Protocol and timing",
       "items": {
        "type": "integer"
       },
+      "order": 90,
       "title": "Poll Classes",
       "type": "array"
      },
      "port": {
       "default": 20000,
+      "group": "Connection",
+      "order": 30,
       "title": "Port",
       "type": "integer"
      },
      "proxy_group": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -1245,19 +1471,30 @@
        }
       ],
       "default": null,
+      "description": "All outstations share one proxy process unless a group is named here.",
+      "group": "Proxy",
+      "order": 180,
       "title": "Proxy Group"
      },
      "read_mode": {
       "$ref": "#/$defs/ReadMode",
-      "default": "class"
+      "default": "class",
+      "description": "class polls or reads of the configured points.",
+      "group": "Protocol and timing",
+      "order": 80
      },
      "registration_timeout": {
+      "advanced": true,
       "default": 30.0,
       "exclusiveMinimum": 0,
+      "group": "Proxy",
+      "order": 160,
       "title": "Registration Timeout",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "reply_timeout": {
+      "advanced": true,
       "anyOf": [
        {
         "exclusiveMinimum": 0,
@@ -1268,28 +1505,42 @@
        }
       ],
       "default": null,
-      "title": "Reply Timeout"
+      "description": "How long this interface waits for the proxy's reply; defaults to three response timeouts, at least 30 s.",
+      "group": "Proxy",
+      "order": 150,
+      "title": "Reply Timeout",
+      "unit": "s"
      },
      "response_timeout": {
       "default": 5.0,
+      "description": "How long the proxy waits for the outstation to answer one request.",
       "exclusiveMinimum": 0,
+      "group": "Protocol and timing",
+      "order": 140,
       "title": "Response Timeout",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "unsolicited": {
       "default": false,
+      "description": "Enable unsolicited responses from the outstation.",
+      "group": "Protocol and timing",
+      "order": 110,
       "title": "Unsolicited",
       "type": "boolean"
      },
      "unsolicited_classes": {
+      "advanced": true,
       "default": [
        1,
        2,
        3
       ],
+      "group": "Protocol and timing",
       "items": {
        "type": "integer"
       },
+      "order": 120,
       "title": "Unsolicited Classes",
       "type": "array"
      }
@@ -1301,81 +1552,156 @@
     "type": "object",
     "x-hints": {
      "bind_host": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 20,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Outstation: the interface to listen on."
      },
      "control_mode": {
-      "advanced": true
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 70,
+      "tooltip": "direct operate or select-before-operate."
      },
      "debug": {
-      "advanced": true
+      "advanced": true,
+      "order": 40
      },
      "driver_role": {
-      "advanced": true
+      "advanced": false,
+      "group": "Device",
+      "order": 20,
+      "tooltip": "master reaches an outstation; outstation serves the registry to a master."
      },
      "driver_type": {
-      "advanced": false
+      "advanced": false,
+      "group": "Device",
+      "order": 10,
+      "tooltip": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake)."
      },
      "heart_beat_point": {
-      "advanced": true
+      "advanced": false,
+      "group": "Polling",
+      "order": 30,
+      "tooltip": "A point the driver toggles on every poll so the device can tell the platform is alive."
      },
      "integrity_poll_interval": {
-      "advanced": true,
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 100,
+      "tooltip": "Seconds between integrity polls; 0 disables them, one always runs when the connection opens.",
       "unit": "s"
      },
      "link_reset": {
-      "advanced": true
+      "advanced": true,
+      "group": "Protocol and timing",
+      "order": 130
      },
      "master_id": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 40,
+      "tooltip": "DNP3 link address of the master."
      },
      "master_ip": {
-      "advanced": true
+      "advanced": true,
+      "group": "Connection",
+      "order": 60,
+      "tooltip": "Accepted from old configurations and not used."
      },
      "module": {
-      "advanced": true
+      "advanced": true,
+      "order": 50,
+      "tooltip": "Import path of a custom interface module when the driver type is not an installed interface."
      },
      "outstation_id": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 50,
+      "tooltip": "DNP3 link address of the outstation."
      },
      "outstation_ip": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 10,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Master: the outstation's address."
      },
      "persistent_connection": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 170,
       "tooltip": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message."
      },
      "plugins": {
-      "advanced": true
+      "advanced": true,
+      "order": 60
      },
      "poll_classes": {
-      "advanced": true
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 90,
+      "tooltip": "Event classes each poll asks for."
      },
      "port": {
-      "advanced": true
+      "advanced": true,
+      "group": "Connection",
+      "order": 30
      },
      "proxy_group": {
-      "advanced": true
+      "advanced": true,
+      "group": "Proxy",
+      "order": 180,
+      "tooltip": "All outstations share one proxy process unless a group is named here."
      },
      "read_mode": {
-      "advanced": true
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 80,
+      "tooltip": "class polls or reads of the configured points."
      },
      "registration_timeout": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 160,
       "unit": "s"
      },
      "reply_timeout": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 150,
+      "tooltip": "How long this interface waits for the proxy's reply; defaults to three response timeouts, at least 30 s.",
       "unit": "s"
      },
      "response_timeout": {
-      "advanced": true,
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 140,
+      "tooltip": "How long the proxy waits for the outstation to answer one request.",
       "unit": "s"
      },
      "unsolicited": {
-      "advanced": true
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 110,
+      "tooltip": "Enable unsolicited responses from the outstation."
      },
      "unsolicited_classes": {
-      "advanced": true
+      "advanced": true,
+      "group": "Protocol and timing",
+      "order": 120
      }
     }
    },
@@ -1699,20 +2025,29 @@
     "additionalProperties": true,
     "properties": {
      "debug": {
+      "advanced": true,
       "default": false,
+      "order": 40,
       "title": "Debug",
       "type": "boolean"
      },
      "driver_role": {
       "default": "client",
+      "description": "Which side of the protocol this remote is: client reaches a device; a server role serves the configured points to a remote peer.",
+      "group": "Device",
+      "order": 20,
       "title": "Driver Role",
       "type": "string"
      },
      "driver_type": {
+      "description": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake).",
+      "group": "Device",
+      "order": 10,
       "title": "Driver Type",
       "type": "string"
      },
      "heart_beat_point": {
+      "advanced": false,
       "anyOf": [
        {
         "type": "string"
@@ -1722,9 +2057,13 @@
        }
       ],
       "default": null,
+      "description": "A point the driver toggles on every poll so the device can tell the platform is alive.",
+      "group": "Polling",
+      "order": 30,
       "title": "Heart Beat Point"
      },
      "module": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -1734,13 +2073,17 @@
        }
       ],
       "default": null,
+      "description": "Import path of a custom interface module when the driver type is not an installed interface.",
+      "order": 50,
       "title": "Module"
      },
      "plugins": {
+      "advanced": true,
       "default": [],
       "items": {
        "type": "string"
       },
+      "order": 60,
       "title": "Plugins",
       "type": "array"
      },
@@ -1754,6 +2097,9 @@
        }
       ],
       "default": null,
+      "description": "Identifies this fake device; part of its UAI.",
+      "group": "Device",
+      "order": 10,
       "title": "Remote Id"
      }
     },
@@ -1764,25 +2110,41 @@
     "type": "object",
     "x-hints": {
      "debug": {
-      "advanced": true
+      "advanced": true,
+      "order": 40
      },
      "driver_role": {
-      "advanced": true
+      "advanced": false,
+      "group": "Device",
+      "order": 20,
+      "tooltip": "Which side of the protocol this remote is: client reaches a device; a server role serves the configured points to a remote peer."
      },
      "driver_type": {
-      "advanced": false
+      "advanced": false,
+      "group": "Device",
+      "order": 10,
+      "tooltip": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake)."
      },
      "heart_beat_point": {
-      "advanced": true
+      "advanced": false,
+      "group": "Polling",
+      "order": 30,
+      "tooltip": "A point the driver toggles on every poll so the device can tell the platform is alive."
      },
      "module": {
-      "advanced": true
+      "advanced": true,
+      "order": 50,
+      "tooltip": "Import path of a custom interface module when the driver type is not an installed interface."
      },
      "plugins": {
-      "advanced": true
+      "advanced": true,
+      "order": 60
      },
      "remote_id": {
-      "advanced": true
+      "advanced": false,
+      "group": "Device",
+      "order": 10,
+      "tooltip": "Identifies this fake device; part of its UAI."
      }
     }
    },
@@ -2269,6 +2631,16 @@
     "properties": {
      "bind_host": {
       "default": "0.0.0.0",
+      "description": "Server: the interface to listen on.",
+      "group": "Connection",
+      "order": 30,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Bind Host",
       "type": "string"
      },
@@ -2282,6 +2654,9 @@
        }
       ],
       "default": null,
+      "description": "The CA that verifies the other side.",
+      "group": "TLS",
+      "order": 80,
       "title": "Ca Path"
      },
      "cert_path": {
@@ -2294,17 +2669,34 @@
        }
       ],
       "default": null,
+      "description": "Client: the device certificate that identifies it. Server: the server certificate.",
+      "group": "TLS",
+      "order": 60,
       "title": "Cert Path"
      },
      "ciphers": {
+      "advanced": true,
+      "group": "TLS",
       "items": {
        "type": "string"
       },
+      "order": 120,
       "title": "Ciphers",
       "type": "array"
      },
      "client_auth": {
+      "advanced": true,
       "default": true,
+      "description": "Server: require clients to present a certificate.",
+      "group": "TLS",
+      "order": 100,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Client Auth",
       "type": "boolean"
      },
@@ -2318,6 +2710,16 @@
        }
       ],
       "default": null,
+      "description": "Server: the DER client whose data the registry describes.",
+      "group": "Identity",
+      "order": 190,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Client Lfdi"
      },
      "client_pin": {
@@ -2330,49 +2732,116 @@
        }
       ],
       "default": null,
+      "group": "Identity",
+      "order": 200,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Client Pin"
      },
      "dcap_path": {
+      "advanced": true,
       "default": "/dcap",
+      "description": "Path of the DeviceCapability resource on the server.",
+      "group": "Connection",
+      "order": 20,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Dcap Path",
       "type": "string"
      },
      "debug": {
+      "advanced": true,
       "default": false,
+      "order": 40,
       "title": "Debug",
       "type": "boolean"
      },
      "default_poll_rate": {
+      "advanced": true,
       "default": 1800.0,
+      "description": "Client: poll rate when the server advertises none.",
       "exclusiveMinimum": 0,
+      "group": "Polling",
+      "order": 230,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Default Poll Rate",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "der_index": {
+      "advanced": true,
       "default": 0,
+      "description": "Which DER of the end device this remote is.",
+      "group": "Identity",
       "minimum": 0,
+      "order": 170,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Der Index",
       "type": "integer"
      },
      "description": {
+      "advanced": true,
       "default": "VOLTTRON",
+      "group": "Identity",
+      "order": 180,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Description",
       "type": "string"
      },
      "device_category": {
+      "advanced": true,
       "default": 4194304,
+      "group": "Identity",
+      "order": 160,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Device Category",
       "type": "integer"
      },
      "driver_role": {
       "$ref": "#/$defs/DriverRole",
-      "default": "client"
+      "default": "client",
+      "description": "client reaches a 2030.5 server as a DER device; server serves one to DER clients.",
+      "group": "Device",
+      "order": 20
      },
      "driver_type": {
+      "description": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake).",
+      "group": "Device",
+      "order": 10,
       "title": "Driver Type",
       "type": "string"
      },
      "heart_beat_point": {
+      "advanced": false,
       "anyOf": [
        {
         "type": "string"
@@ -2382,13 +2851,28 @@
        }
       ],
       "default": null,
+      "description": "A point the driver toggles on every poll so the device can tell the platform is alive.",
+      "group": "Polling",
+      "order": 30,
       "title": "Heart Beat Point"
      },
      "immediate_control_duration": {
+      "advanced": true,
       "default": 3600,
+      "description": "Server: how long a DERControl write stays in force.",
+      "group": "Polling",
       "minimum": 1,
+      "order": 280,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Immediate Control Duration",
-      "type": "integer"
+      "type": "integer",
+      "unit": "s"
      },
      "key_path": {
       "anyOf": [
@@ -2400,6 +2884,8 @@
        }
       ],
       "default": null,
+      "group": "TLS",
+      "order": 70,
       "title": "Key Path"
      },
      "lfdi": {
@@ -2412,9 +2898,19 @@
        }
       ],
       "default": null,
+      "description": "Client: 40 hex digits; derived from the certificate when absent.",
+      "group": "Identity",
+      "order": 130,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Lfdi"
      },
      "module": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -2424,14 +2920,26 @@
        }
       ],
       "default": null,
+      "description": "Import path of a custom interface module when the driver type is not an installed interface.",
+      "order": 50,
       "title": "Module"
      },
      "notify_bind_host": {
+      "advanced": true,
       "default": "0.0.0.0",
+      "group": "Notifications",
+      "order": 310,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Notify Bind Host",
       "type": "string"
      },
      "notify_cert_path": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -2441,14 +2949,33 @@
        }
       ],
       "default": null,
+      "description": "Server-style certificate for the receiver when the device certificate is refused as one.",
+      "group": "Notifications",
+      "order": 340,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Notify Cert Path"
      },
      "notify_client_auth": {
+      "advanced": true,
       "default": false,
+      "group": "Notifications",
+      "order": 320,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Notify Client Auth",
       "type": "boolean"
      },
      "notify_host": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -2458,9 +2985,19 @@
        }
       ],
       "default": null,
+      "description": "The address the server reaches our notification receiver at; required for subscriptions.",
+      "group": "Notifications",
+      "order": 290,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Notify Host"
      },
      "notify_key_path": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -2470,22 +3007,51 @@
        }
       ],
       "default": null,
+      "group": "Notifications",
+      "order": 350,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Notify Key Path"
      },
      "notify_port": {
+      "advanced": true,
       "default": 8443,
+      "group": "Notifications",
       "minimum": 0,
+      "order": 300,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Notify Port",
       "type": "integer"
      },
      "notify_tls_verify": {
+      "advanced": true,
       "default": false,
+      "group": "Notifications",
+      "order": 330,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Notify Tls Verify",
       "type": "boolean"
      },
      "persistent_connection": {
+      "advanced": true,
       "default": true,
       "description": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message.",
+      "group": "Proxy",
+      "order": 400,
       "title": "Persistent Connection",
       "type": "boolean"
      },
@@ -2499,23 +3065,46 @@
        }
       ],
       "default": null,
+      "description": "Client: registration PIN.",
+      "group": "Identity",
+      "order": 140,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Pin"
      },
      "plugins": {
+      "advanced": true,
       "default": [],
       "items": {
        "type": "string"
       },
+      "order": 60,
       "title": "Plugins",
       "type": "array"
      },
      "poll_rate": {
       "default": 60,
+      "description": "Server: pollRate advertised to clients.",
+      "group": "Polling",
       "minimum": 1,
+      "order": 260,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Poll Rate",
-      "type": "integer"
+      "type": "integer",
+      "unit": "s"
      },
      "poll_rate_ceiling": {
+      "advanced": true,
       "anyOf": [
        {
         "exclusiveMinimum": 0,
@@ -2526,27 +3115,70 @@
        }
       ],
       "default": null,
-      "title": "Poll Rate Ceiling"
+      "description": "Client: caps the server's poll rate; blank honours it.",
+      "group": "Polling",
+      "order": 240,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "title": "Poll Rate Ceiling",
+      "unit": "s"
      },
      "poll_rate_floor": {
+      "advanced": true,
       "default": 60.0,
+      "description": "Client: never poll faster than this whatever the server advertises.",
+      "group": "Polling",
       "minimum": 0,
+      "order": 220,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Poll Rate Floor",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "port": {
       "default": 7443,
+      "description": "Server: the port to listen on.",
+      "group": "Connection",
       "minimum": 0,
+      "order": 40,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Port",
       "type": "integer"
      },
      "primacy": {
+      "advanced": true,
       "default": 1,
+      "description": "Server: the served program's primacy.",
+      "group": "Polling",
       "minimum": 0,
+      "order": 270,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Primacy",
       "type": "integer"
      },
      "proxy_group": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -2556,25 +3188,52 @@
        }
       ],
       "default": null,
+      "description": "All servers share one proxy process unless a group is named here.",
+      "group": "Proxy",
+      "order": 410,
       "title": "Proxy Group"
      },
      "register_if_missing": {
+      "advanced": true,
       "default": true,
+      "group": "Identity",
+      "order": 150,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Register If Missing",
       "type": "boolean"
      },
      "register_unknown_clients": {
+      "advanced": true,
       "default": true,
+      "group": "Identity",
+      "order": 210,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Register Unknown Clients",
       "type": "boolean"
      },
      "registration_timeout": {
+      "advanced": true,
       "default": 30.0,
       "exclusiveMinimum": 0,
+      "group": "Proxy",
+      "order": 390,
       "title": "Registration Timeout",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "reply_timeout": {
+      "advanced": true,
       "anyOf": [
        {
         "exclusiveMinimum": 0,
@@ -2585,13 +3244,22 @@
        }
       ],
       "default": null,
-      "title": "Reply Timeout"
+      "description": "How long this interface waits for the proxy's reply; defaults to three response timeouts, at least 30 s.",
+      "group": "Proxy",
+      "order": 380,
+      "title": "Reply Timeout",
+      "unit": "s"
      },
      "response_timeout": {
+      "advanced": true,
       "default": 10.0,
+      "description": "How long the proxy waits for the server to answer one request.",
       "exclusiveMinimum": 0,
+      "group": "Proxy",
+      "order": 370,
       "title": "Response Timeout",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "server_url": {
       "anyOf": [
@@ -2603,9 +3271,19 @@
        }
       ],
       "default": null,
+      "description": "Client: the server to reach.",
+      "group": "Connection",
+      "order": 10,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Server Url"
      },
      "state_dir": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -2615,25 +3293,53 @@
        }
       ],
       "default": null,
+      "description": "Server: where the proxy keeps registrations, subscriptions and controls; blank keeps them in memory.",
+      "group": "Proxy",
+      "order": 360,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "State Dir"
      },
      "subscribe": {
       "default": true,
+      "description": "Client: subscribe to server notifications instead of polling alone.",
+      "group": "Polling",
+      "order": 250,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
       "title": "Subscribe",
       "type": "boolean"
      },
      "tls": {
       "default": true,
+      "description": "Serve or connect over TLS.",
+      "group": "TLS",
+      "order": 50,
       "title": "Tls",
       "type": "boolean"
      },
      "tls12_only": {
+      "advanced": true,
       "default": true,
+      "group": "TLS",
+      "order": 110,
       "title": "Tls12 Only",
       "type": "boolean"
      },
      "tls_verify": {
+      "advanced": true,
       "default": true,
+      "group": "TLS",
+      "order": 90,
       "title": "Tls Verify",
       "type": "boolean"
      }
@@ -2645,149 +3351,458 @@
     "type": "object",
     "x-hints": {
      "bind_host": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 30,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: the interface to listen on."
      },
      "ca_path": {
-      "advanced": true
+      "advanced": false,
+      "group": "TLS",
+      "order": 80,
+      "tooltip": "The CA that verifies the other side."
      },
      "cert_path": {
-      "advanced": true
+      "advanced": false,
+      "group": "TLS",
+      "order": 60,
+      "tooltip": "Client: the device certificate that identifies it. Server: the server certificate."
      },
      "ciphers": {
-      "advanced": true
+      "advanced": true,
+      "group": "TLS",
+      "order": 120
      },
      "client_auth": {
-      "advanced": true
+      "advanced": true,
+      "group": "TLS",
+      "order": 100,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: require clients to present a certificate."
      },
      "client_lfdi": {
-      "advanced": true
+      "advanced": false,
+      "group": "Identity",
+      "order": 190,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: the DER client whose data the registry describes."
      },
      "client_pin": {
-      "advanced": true
+      "advanced": true,
+      "group": "Identity",
+      "order": 200,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      }
      },
      "dcap_path": {
-      "advanced": true
+      "advanced": true,
+      "group": "Connection",
+      "order": 20,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Path of the DeviceCapability resource on the server."
      },
      "debug": {
-      "advanced": true
+      "advanced": true,
+      "order": 40
      },
      "default_poll_rate": {
-      "advanced": true
+      "advanced": true,
+      "group": "Polling",
+      "order": 230,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Client: poll rate when the server advertises none.",
+      "unit": "s"
      },
      "der_index": {
-      "advanced": true
+      "advanced": true,
+      "group": "Identity",
+      "order": 170,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Which DER of the end device this remote is."
      },
      "description": {
-      "advanced": true
+      "advanced": true,
+      "group": "Identity",
+      "order": 180,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      }
      },
      "device_category": {
-      "advanced": true
+      "advanced": true,
+      "group": "Identity",
+      "order": 160,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      }
      },
      "driver_role": {
-      "advanced": true
+      "advanced": false,
+      "group": "Device",
+      "order": 20,
+      "tooltip": "client reaches a 2030.5 server as a DER device; server serves one to DER clients."
      },
      "driver_type": {
-      "advanced": false
+      "advanced": false,
+      "group": "Device",
+      "order": 10,
+      "tooltip": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake)."
      },
      "heart_beat_point": {
-      "advanced": true
+      "advanced": false,
+      "group": "Polling",
+      "order": 30,
+      "tooltip": "A point the driver toggles on every poll so the device can tell the platform is alive."
      },
      "immediate_control_duration": {
-      "advanced": true
+      "advanced": true,
+      "group": "Polling",
+      "order": 280,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: how long a DERControl write stays in force.",
+      "unit": "s"
      },
      "key_path": {
-      "advanced": true
+      "advanced": true,
+      "group": "TLS",
+      "order": 70
      },
      "lfdi": {
-      "advanced": true
+      "advanced": false,
+      "group": "Identity",
+      "order": 130,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Client: 40 hex digits; derived from the certificate when absent."
      },
      "module": {
-      "advanced": true
+      "advanced": true,
+      "order": 50,
+      "tooltip": "Import path of a custom interface module when the driver type is not an installed interface."
      },
      "notify_bind_host": {
-      "advanced": true
+      "advanced": true,
+      "group": "Notifications",
+      "order": 310,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      }
      },
      "notify_cert_path": {
-      "advanced": true
+      "advanced": true,
+      "group": "Notifications",
+      "order": 340,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Server-style certificate for the receiver when the device certificate is refused as one."
      },
      "notify_client_auth": {
-      "advanced": true
+      "advanced": true,
+      "group": "Notifications",
+      "order": 320,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      }
      },
      "notify_host": {
-      "advanced": true
+      "advanced": true,
+      "group": "Notifications",
+      "order": 290,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "The address the server reaches our notification receiver at; required for subscriptions."
      },
      "notify_key_path": {
-      "advanced": true
+      "advanced": true,
+      "group": "Notifications",
+      "order": 350,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      }
      },
      "notify_port": {
-      "advanced": true
+      "advanced": true,
+      "group": "Notifications",
+      "order": 300,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      }
      },
      "notify_tls_verify": {
-      "advanced": true
+      "advanced": true,
+      "group": "Notifications",
+      "order": 330,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      }
      },
      "persistent_connection": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 400,
       "tooltip": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message."
      },
      "pin": {
-      "advanced": true
+      "advanced": false,
+      "group": "Identity",
+      "order": 140,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Client: registration PIN."
      },
      "plugins": {
-      "advanced": true
+      "advanced": true,
+      "order": 60
      },
      "poll_rate": {
-      "advanced": true
+      "advanced": false,
+      "group": "Polling",
+      "order": 260,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: pollRate advertised to clients.",
+      "unit": "s"
      },
      "poll_rate_ceiling": {
-      "advanced": true
+      "advanced": true,
+      "group": "Polling",
+      "order": 240,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Client: caps the server's poll rate; blank honours it.",
+      "unit": "s"
      },
      "poll_rate_floor": {
-      "advanced": true
+      "advanced": true,
+      "group": "Polling",
+      "order": 220,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Client: never poll faster than this whatever the server advertises.",
+      "unit": "s"
      },
      "port": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 40,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: the port to listen on."
      },
      "primacy": {
-      "advanced": true
+      "advanced": true,
+      "group": "Polling",
+      "order": 270,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: the served program's primacy."
      },
      "proxy_group": {
-      "advanced": true
+      "advanced": true,
+      "group": "Proxy",
+      "order": 410,
+      "tooltip": "All servers share one proxy process unless a group is named here."
      },
      "register_if_missing": {
-      "advanced": true
+      "advanced": true,
+      "group": "Identity",
+      "order": 150,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      }
      },
      "register_unknown_clients": {
-      "advanced": true
+      "advanced": true,
+      "group": "Identity",
+      "order": 210,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      }
      },
      "registration_timeout": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 390,
       "unit": "s"
      },
      "reply_timeout": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 380,
+      "tooltip": "How long this interface waits for the proxy's reply; defaults to three response timeouts, at least 30 s.",
       "unit": "s"
      },
      "response_timeout": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 370,
+      "tooltip": "How long the proxy waits for the server to answer one request.",
       "unit": "s"
      },
      "server_url": {
-      "advanced": true
+      "advanced": false,
+      "group": "Connection",
+      "order": 10,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Client: the server to reach."
      },
      "state_dir": {
-      "advanced": true
+      "advanced": true,
+      "group": "Proxy",
+      "order": 360,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Server: where the proxy keeps registrations, subscriptions and controls; blank keeps them in memory."
      },
      "subscribe": {
-      "advanced": true
+      "advanced": false,
+      "group": "Polling",
+      "order": 250,
+      "show_when": {
+       "driver_role": [
+        "client",
+        "master"
+       ]
+      },
+      "tooltip": "Client: subscribe to server notifications instead of polling alone."
      },
      "tls": {
-      "advanced": true
+      "advanced": false,
+      "group": "TLS",
+      "order": 50,
+      "tooltip": "Serve or connect over TLS."
      },
      "tls12_only": {
-      "advanced": true
+      "advanced": true,
+      "group": "TLS",
+      "order": 110
      },
      "tls_verify": {
-      "advanced": true
+      "advanced": true,
+      "group": "TLS",
+      "order": 90
      }
     }
    },
@@ -3264,26 +4279,52 @@
     "properties": {
      "addressing": {
       "$ref": "#/$defs/Addressing",
-      "default": "offset"
+      "default": "offset",
+      "description": "How registry addresses are counted: offset (0-based), address (1-based) or offset_plus.",
+      "group": "Protocol and timing",
+      "order": 60
      },
      "baudrate": {
+      "advanced": true,
       "default": 9600,
+      "group": "Serial",
+      "order": 160,
+      "show_when": {
+       "transport_protocol": "serial"
+      },
       "title": "Baudrate",
       "type": "integer"
      },
      "bind_host": {
       "default": "0.0.0.0",
+      "description": "Slave over tcp, udp or tls: the interface to listen on.",
+      "group": "Connection",
+      "order": 50,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
       "title": "Bind Host",
       "type": "string"
      },
      "bytesize": {
+      "advanced": true,
       "default": 8,
+      "group": "Serial",
       "maximum": 8,
       "minimum": 5,
+      "order": 170,
+      "show_when": {
+       "transport_protocol": "serial"
+      },
       "title": "Bytesize",
       "type": "integer"
      },
      "ca_path": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -3293,9 +4334,16 @@
        }
       ],
       "default": null,
+      "description": "Master: the CA that verifies the server (system CAs when blank). Slave: the CA that signed the masters' certificates.",
+      "group": "TLS",
+      "order": 130,
+      "show_when": {
+       "transport_protocol": "tls"
+      },
       "title": "Ca Path"
      },
      "cert_path": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -3305,15 +4353,30 @@
        }
       ],
       "default": null,
+      "description": "Master: this master's certificate for servers requiring client authentication. Slave: the server certificate.",
+      "group": "TLS",
+      "order": 110,
+      "show_when": {
+       "transport_protocol": "tls"
+      },
       "title": "Cert Path"
      },
      "client_auth": {
+      "advanced": true,
       "default": false,
+      "description": "Slave: require masters to present a certificate.",
+      "group": "TLS",
+      "order": 150,
+      "show_when": {
+       "transport_protocol": "tls"
+      },
       "title": "Client Auth",
       "type": "boolean"
      },
      "debug": {
+      "advanced": true,
       "default": false,
+      "order": 40,
       "title": "Debug",
       "type": "boolean"
      },
@@ -3327,22 +4390,39 @@
        }
       ],
       "default": null,
+      "description": "Master: the device or gateway to reach, or the serial port. Slave over serial: the port to serve on.",
+      "group": "Connection",
+      "order": 20,
       "title": "Device Address"
      },
      "driver_role": {
       "$ref": "#/$defs/DriverRole",
-      "default": "master"
+      "default": "master",
+      "description": "master reaches a unit; slave serves the registry as a unit of its own.",
+      "group": "Device",
+      "order": 20
      },
      "driver_type": {
+      "description": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake).",
+      "group": "Device",
+      "order": 10,
       "title": "Driver Type",
       "type": "string"
      },
      "handle_local_echo": {
+      "advanced": true,
       "default": false,
+      "description": "Whether the adapter echoes what the master sends (half-duplex RS-485 without echo suppression).",
+      "group": "Serial",
+      "order": 200,
+      "show_when": {
+       "transport_protocol": "serial"
+      },
       "title": "Handle Local Echo",
       "type": "boolean"
      },
      "heart_beat_point": {
+      "advanced": false,
       "anyOf": [
        {
         "type": "string"
@@ -3352,9 +4432,13 @@
        }
       ],
       "default": null,
+      "description": "A point the driver toggles on every poll so the device can tell the platform is alive.",
+      "group": "Polling",
+      "order": 30,
       "title": "Heart Beat Point"
      },
      "key_path": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -3364,15 +4448,24 @@
        }
       ],
       "default": null,
+      "group": "TLS",
+      "order": 120,
+      "show_when": {
+       "transport_protocol": "tls"
+      },
       "title": "Key Path"
      },
      "max_gap": {
       "default": 0,
+      "description": "Largest run of unconfigured registers the proxy may read through to merge two requests into one.",
+      "group": "Protocol and timing",
       "minimum": 0,
+      "order": 100,
       "title": "Max Gap",
       "type": "integer"
      },
      "module": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -3382,23 +4475,36 @@
        }
       ],
       "default": null,
+      "description": "Import path of a custom interface module when the driver type is not an installed interface.",
+      "order": 50,
       "title": "Module"
      },
      "parity": {
       "$ref": "#/$defs/Parity",
-      "default": "none"
+      "advanced": true,
+      "default": "none",
+      "group": "Serial",
+      "order": 180,
+      "show_when": {
+       "transport_protocol": "serial"
+      }
      },
      "persistent_connection": {
+      "advanced": true,
       "default": true,
       "description": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message.",
+      "group": "Proxy",
+      "order": 230,
       "title": "Persistent Connection",
       "type": "boolean"
      },
      "plugins": {
+      "advanced": true,
       "default": [],
       "items": {
        "type": "string"
       },
+      "order": 60,
       "title": "Plugins",
       "type": "array"
      },
@@ -3412,9 +4518,13 @@
        }
       ],
       "default": null,
+      "description": "Blank resolves to 802 for TLS and 502 otherwise; ignored for serial.",
+      "group": "Connection",
+      "order": 30,
       "title": "Port"
      },
      "proxy_group": {
+      "advanced": true,
       "anyOf": [
        {
         "type": "string"
@@ -3424,9 +4534,13 @@
        }
       ],
       "default": null,
+      "description": "All Modbus devices share one proxy process unless a group is named here.",
+      "group": "Proxy",
+      "order": 240,
       "title": "Proxy Group"
      },
      "register_map": {
+      "advanced": true,
       "anyOf": [
        {
         "items": {
@@ -3440,15 +4554,24 @@
        }
       ],
       "default": null,
+      "description": "Optional modbus_tk-style register map (a config:// CSV) that completes registry rows lacking an address or data type.",
+      "group": "Proxy",
+      "order": 250,
       "title": "Register Map"
      },
      "registration_timeout": {
+      "advanced": true,
       "default": 30.0,
+      "description": "How long to wait for the proxy process to start and register before declaring setup failed.",
       "exclusiveMinimum": 0,
+      "group": "Proxy",
+      "order": 220,
       "title": "Registration Timeout",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "reply_timeout": {
+      "advanced": true,
       "anyOf": [
        {
         "exclusiveMinimum": 0,
@@ -3459,41 +4582,72 @@
        }
       ],
       "default": null,
-      "title": "Reply Timeout"
+      "description": "How long to wait for the proxy's reply to a read or write; defaults to three timeout-and-retry cycles, at least 30 s.",
+      "group": "Proxy",
+      "order": 210,
+      "title": "Reply Timeout",
+      "unit": "s"
      },
      "retries": {
       "default": 3,
+      "group": "Protocol and timing",
       "minimum": 0,
+      "order": 90,
       "title": "Retries",
       "type": "integer"
      },
      "stopbits": {
       "$ref": "#/$defs/StopBits",
-      "default": 1.0
+      "advanced": true,
+      "default": 1.0,
+      "group": "Serial",
+      "order": 190,
+      "show_when": {
+       "transport_protocol": "serial"
+      }
      },
      "timeout": {
       "default": 3.0,
+      "description": "How long the proxy waits for the device to answer one request before retrying.",
       "exclusiveMinimum": 0,
+      "group": "Protocol and timing",
+      "order": 80,
       "title": "Timeout",
-      "type": "number"
+      "type": "number",
+      "unit": "s"
      },
      "tls_verify": {
+      "advanced": true,
       "default": true,
+      "group": "TLS",
+      "order": 140,
+      "show_when": {
+       "transport_protocol": "tls"
+      },
       "title": "Tls Verify",
       "type": "boolean"
      },
      "transport_protocol": {
       "$ref": "#/$defs/TransportProtocol",
-      "default": "tcp"
+      "default": "tcp",
+      "description": "tcp, udp, tls or serial.",
+      "group": "Connection",
+      "order": 10
      },
      "unit_id": {
       "default": 1,
+      "description": "The Modbus unit (slave) identifier.",
+      "group": "Connection",
+      "order": 40,
       "title": "Unit Id",
       "type": "integer"
      },
      "word_order": {
       "$ref": "#/$defs/WordOrder",
-      "default": "big"
+      "default": "big",
+      "description": "Default word order for multi-register values; a point may override it.",
+      "group": "Protocol and timing",
+      "order": 70
      }
     },
     "required": [
@@ -3504,115 +4658,181 @@
     "x-hints": {
      "addressing": {
       "advanced": false,
-      "group": "Protocol and timing"
+      "group": "Protocol and timing",
+      "order": 60,
+      "tooltip": "How registry addresses are counted: offset (0-based), address (1-based) or offset_plus."
      },
      "baudrate": {
       "advanced": true,
+      "group": "Serial",
+      "order": 160,
       "show_when": {
        "transport_protocol": "serial"
       }
      },
      "bind_host": {
       "advanced": false,
-      "group": "Connection"
+      "group": "Connection",
+      "order": 50,
+      "show_when": {
+       "driver_role": [
+        "server",
+        "slave",
+        "outstation"
+       ]
+      },
+      "tooltip": "Slave over tcp, udp or tls: the interface to listen on."
      },
      "bytesize": {
       "advanced": true,
+      "group": "Serial",
+      "order": 170,
       "show_when": {
        "transport_protocol": "serial"
       }
      },
      "ca_path": {
       "advanced": true,
+      "group": "TLS",
+      "order": 130,
       "show_when": {
        "transport_protocol": "tls"
-      }
+      },
+      "tooltip": "Master: the CA that verifies the server (system CAs when blank). Slave: the CA that signed the masters' certificates."
      },
      "cert_path": {
       "advanced": true,
+      "group": "TLS",
+      "order": 110,
       "show_when": {
        "transport_protocol": "tls"
-      }
+      },
+      "tooltip": "Master: this master's certificate for servers requiring client authentication. Slave: the server certificate."
      },
      "client_auth": {
       "advanced": true,
+      "group": "TLS",
+      "order": 150,
       "show_when": {
        "transport_protocol": "tls"
-      }
+      },
+      "tooltip": "Slave: require masters to present a certificate."
      },
      "debug": {
-      "advanced": true
+      "advanced": true,
+      "order": 40
      },
      "device_address": {
       "advanced": false,
-      "group": "Connection"
+      "group": "Connection",
+      "order": 20,
+      "tooltip": "Master: the device or gateway to reach, or the serial port. Slave over serial: the port to serve on."
      },
      "driver_role": {
-      "advanced": true
+      "advanced": false,
+      "group": "Device",
+      "order": 20,
+      "tooltip": "master reaches a unit; slave serves the registry as a unit of its own."
      },
      "driver_type": {
-      "advanced": false
+      "advanced": false,
+      "group": "Device",
+      "order": 10,
+      "tooltip": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake)."
      },
      "handle_local_echo": {
       "advanced": true,
+      "group": "Serial",
+      "order": 200,
       "show_when": {
        "transport_protocol": "serial"
-      }
+      },
+      "tooltip": "Whether the adapter echoes what the master sends (half-duplex RS-485 without echo suppression)."
      },
      "heart_beat_point": {
       "advanced": false,
-      "group": "Polling"
+      "group": "Polling",
+      "order": 30,
+      "tooltip": "A point the driver toggles on every poll so the device can tell the platform is alive."
      },
      "key_path": {
       "advanced": true,
+      "group": "TLS",
+      "order": 120,
       "show_when": {
        "transport_protocol": "tls"
       }
      },
      "max_gap": {
       "advanced": false,
-      "group": "Protocol and timing"
+      "group": "Protocol and timing",
+      "order": 100,
+      "tooltip": "Largest run of unconfigured registers the proxy may read through to merge two requests into one."
      },
      "module": {
-      "advanced": true
+      "advanced": true,
+      "order": 50,
+      "tooltip": "Import path of a custom interface module when the driver type is not an installed interface."
      },
      "parity": {
       "advanced": true,
+      "group": "Serial",
+      "order": 180,
       "show_when": {
        "transport_protocol": "serial"
       }
      },
      "persistent_connection": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 230,
       "tooltip": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message."
      },
      "plugins": {
-      "advanced": true
+      "advanced": true,
+      "order": 60
      },
      "port": {
       "advanced": false,
-      "group": "Connection"
+      "group": "Connection",
+      "order": 30,
+      "tooltip": "Blank resolves to 802 for TLS and 502 otherwise; ignored for serial."
      },
      "proxy_group": {
-      "advanced": true
+      "advanced": true,
+      "group": "Proxy",
+      "order": 240,
+      "tooltip": "All Modbus devices share one proxy process unless a group is named here."
      },
      "register_map": {
-      "advanced": true
+      "advanced": true,
+      "group": "Proxy",
+      "order": 250,
+      "tooltip": "Optional modbus_tk-style register map (a config:// CSV) that completes registry rows lacking an address or data type."
      },
      "registration_timeout": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 220,
+      "tooltip": "How long to wait for the proxy process to start and register before declaring setup failed.",
       "unit": "s"
      },
      "reply_timeout": {
       "advanced": true,
+      "group": "Proxy",
+      "order": 210,
+      "tooltip": "How long to wait for the proxy's reply to a read or write; defaults to three timeout-and-retry cycles, at least 30 s.",
       "unit": "s"
      },
      "retries": {
-      "advanced": false,
-      "group": "Protocol and timing"
+      "advanced": true,
+      "group": "Protocol and timing",
+      "order": 90
      },
      "stopbits": {
       "advanced": true,
+      "group": "Serial",
+      "order": 190,
       "show_when": {
        "transport_protocol": "serial"
       }
@@ -3620,25 +4840,35 @@
      "timeout": {
       "advanced": false,
       "group": "Protocol and timing",
+      "order": 80,
+      "tooltip": "How long the proxy waits for the device to answer one request before retrying.",
       "unit": "s"
      },
      "tls_verify": {
       "advanced": true,
+      "group": "TLS",
+      "order": 140,
       "show_when": {
        "transport_protocol": "tls"
       }
      },
      "transport_protocol": {
       "advanced": false,
-      "group": "Connection"
+      "group": "Connection",
+      "order": 10,
+      "tooltip": "tcp, udp, tls or serial."
      },
      "unit_id": {
       "advanced": false,
-      "group": "Connection"
+      "group": "Connection",
+      "order": 40,
+      "tooltip": "The Modbus unit (slave) identifier."
      },
      "word_order": {
       "advanced": false,
-      "group": "Protocol and timing"
+      "group": "Protocol and timing",
+      "order": 70,
+      "tooltip": "Default word order for multi-register values; a point may override it."
      }
     }
    },
@@ -3704,40 +4934,11 @@
      "title": "Bus Type",
      "type": "string"
     },
-    "inbound_writes": {
-     "default": true,
-     "description": "translate mode: write remote messages whose resource has an rpc_topic through the Resource Bridge (False: publish them locally as before).",
-     "title": "Inbound Writes",
-     "type": "boolean"
-    },
-    "mode": {
-     "default": "translate",
-     "description": "How the adapter bridges VOLTTRON and the remote bus. \"translate\": local device publications are transformed into the remote topic's format here, and a remote message for a device is written through the Resource Bridge's write RPC (see resource_bridge) or, for a remote-owned resource, published locally in the canonical format. \"relay\": OpenFMB (or any aliased format) lives on the VOLTTRON bus itself under the remote topic; the adapter only re-serialises between the remote encoding and the local JSON form, and the Resource Bridge does the translating.",
-     "enum": [
-      "translate",
-      "relay"
-     ],
-     "title": "Mode",
-     "type": "string"
-    },
     "proxy_registration_timeout": {
      "default": 30.0,
      "description": "Seconds to wait for a newly launched proxy to register.",
      "exclusiveMinimum": 0,
      "title": "Proxy Registration Timeout",
-     "type": "number"
-    },
-    "resource_bridge": {
-     "default": "platform.resource_bridge",
-     "description": "translate mode: VIP identity of the Resource Bridge that writes devices.",
-     "title": "Resource Bridge",
-     "type": "string"
-    },
-    "rpc_timeout": {
-     "default": 15.0,
-     "description": "Seconds to wait for the Resource Bridge's write.",
-     "exclusiveMinimum": 0,
-     "title": "Rpc Timeout",
      "type": "number"
     }
    },
@@ -3752,26 +4953,9 @@
      "advanced": false,
      "tooltip": "Protocol plugin name, e.g. \"mqtt\" or \"nats\". Resolved to protocol_proxy.protocol.<bus_type>."
     },
-    "inbound_writes": {
-     "advanced": false,
-     "tooltip": "translate mode: write remote messages whose resource has an rpc_topic through the Resource Bridge (False: publish them locally as before)."
-    },
-    "mode": {
-     "advanced": false,
-     "tooltip": "How the adapter bridges VOLTTRON and the remote bus. \"translate\": local device publications are transformed into the remote topic's format here, and a remote message for a device is written through the Resource Bridge's write RPC (see resource_bridge) or, for a remote-owned resource, published locally in the canonical format. \"relay\": OpenFMB (or any aliased format) lives on the VOLTTRON bus itself under the remote topic; the adapter only re-serialises between the remote encoding and the local JSON form, and the Resource Bridge does the translating."
-    },
     "proxy_registration_timeout": {
      "advanced": false,
      "tooltip": "Seconds to wait for a newly launched proxy to register.",
-     "unit": "s"
-    },
-    "resource_bridge": {
-     "advanced": false,
-     "tooltip": "translate mode: VIP identity of the Resource Bridge that writes devices."
-    },
-    "rpc_timeout": {
-     "advanced": false,
-     "tooltip": "Seconds to wait for the Resource Bridge's write.",
      "unit": "s"
     }
    }
@@ -5243,20 +6427,29 @@
    "additionalProperties": true,
    "properties": {
     "debug": {
+     "advanced": true,
      "default": false,
+     "order": 40,
      "title": "Debug",
      "type": "boolean"
     },
     "driver_role": {
      "default": "client",
+     "description": "Which side of the protocol this remote is: client reaches a device; a server role serves the configured points to a remote peer.",
+     "group": "Device",
+     "order": 20,
      "title": "Driver Role",
      "type": "string"
     },
     "driver_type": {
+     "description": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake).",
+     "group": "Device",
+     "order": 10,
      "title": "Driver Type",
      "type": "string"
     },
     "heart_beat_point": {
+     "advanced": false,
      "anyOf": [
       {
        "type": "string"
@@ -5266,9 +6459,13 @@
       }
      ],
      "default": null,
+     "description": "A point the driver toggles on every poll so the device can tell the platform is alive.",
+     "group": "Polling",
+     "order": 30,
      "title": "Heart Beat Point"
     },
     "module": {
+     "advanced": true,
      "anyOf": [
       {
        "type": "string"
@@ -5278,13 +6475,17 @@
       }
      ],
      "default": null,
+     "description": "Import path of a custom interface module when the driver type is not an installed interface.",
+     "order": 50,
      "title": "Module"
     },
     "plugins": {
+     "advanced": true,
      "default": [],
      "items": {
       "type": "string"
      },
+     "order": 60,
      "title": "Plugins",
      "type": "array"
     }
@@ -5296,22 +6497,35 @@
    "type": "object",
    "x-hints": {
     "debug": {
-     "advanced": true
+     "advanced": true,
+     "order": 40
     },
     "driver_role": {
-     "advanced": true
+     "advanced": false,
+     "group": "Device",
+     "order": 20,
+     "tooltip": "Which side of the protocol this remote is: client reaches a device; a server role serves the configured points to a remote peer."
     },
     "driver_type": {
-     "advanced": false
+     "advanced": false,
+     "group": "Device",
+     "order": 10,
+     "tooltip": "The interface module that speaks this device's protocol (modbus, dnp3, ieee2030_5, bacnet, fake)."
     },
     "heart_beat_point": {
-     "advanced": true
+     "advanced": false,
+     "group": "Polling",
+     "order": 30,
+     "tooltip": "A point the driver toggles on every poll so the device can tell the platform is alive."
     },
     "module": {
-     "advanced": true
+     "advanced": true,
+     "order": 50,
+     "tooltip": "Import path of a custom interface module when the driver type is not an installed interface."
     },
     "plugins": {
-     "advanced": true
+     "advanced": true,
+     "order": 60
     }
    }
   },

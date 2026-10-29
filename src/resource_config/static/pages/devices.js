@@ -84,7 +84,10 @@ function renderDevice(main, ctx, d, editing) {
 }
 function remoteView(schema, remote) {
   const hints = schema['x-hints'] || {}; const props = schema.properties || {};
-  const rows = Object.entries(props).filter(([n]) => !['driver_type', 'driver_role', 'heart_beat_point', 'module', 'plugins', 'debug', 'register_map'].includes(n));
+  // show_when: a row whose condition names another field is shown only when that field (or its default) matches
+  const current = (k) => String(remote[k] ?? (props[k] || {}).default ?? '');
+  const applies = (n) => { const w = (hints[n] || {}).show_when; return !w || Object.entries(w).every(([k, v]) => (Array.isArray(v) ? v.map(String).includes(current(k)) : String(v) === current(k))); };
+  const rows = Object.entries(props).filter(([n]) => !['driver_type', 'driver_role', 'heart_beat_point', 'module', 'plugins', 'debug', 'register_map'].includes(n) && applies(n));
   const visible = rows.filter(([n]) => !(hints[n] || {}).advanced), advanced = rows.filter(([n]) => (hints[n] || {}).advanced);
   const show = (n, prop) => { const v = remote[n]; return v === undefined || v === null ? h('span', { class: 'note' }, prop.default !== undefined && prop.default !== null && typeof prop.default !== 'object' ? String(prop.default) : '—') : typeof v === 'object' ? JSON.stringify(v) : String(v); };
   const groups = new Map();

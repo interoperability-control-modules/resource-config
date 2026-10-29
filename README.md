@@ -63,4 +63,5 @@ Devices); the Resource Bridge's `statistics` RPC (Activity card); the config-met
 
 Waiting on a real platform: the volttron-lib-web changes live on its `extra_fixes` branch until released; the
 platform's `rpc-allow-list` must name `platform.presentation` and `platform.resource_bridge`; the derhost dialect is
-untested against fastlib; interface models do not yet carry layout hints (the catalog's own hints are used).
+untested against fastlib. The interface models carry the layout hints; the catalog's Modbus fallback only serves
+interfaces released before them.
