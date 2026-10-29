@@ -18,10 +18,20 @@ Settings come from `RESOURCE_CONFIG_<FIELD>` environment variables or a JSON fil
 (or `--config`): `platform_url`, `platform_name`, `dialect` (`vui` or `derhost`), `verify_tls`, `secret_key`,
 `poll_interval`, `host`, `port`, and the identities of the service, driver, Resource Bridge and bus adapter.
 
-What the platform must allow: the web user needs the `vui` group; the service RPCs the UI calls (`resolve`,
-`check_references`, …) go through the web service's RPC proxy, so the platform's `[web] rpc-allow-list` must name
-`platform.presentation` and `platform.resource_bridge`. The config store, the driver and the control service's
-lifecycle are reached only through their dedicated endpoints.
+What the platform must allow: the web user needs the `vui` group, and the RPCs the UI calls go through the web
+service's RPC proxy, which forwards nothing unless the `rpc-allow-list` option of the platform config file's `[web]`
+section names the identity and method (globs; one entry per line):
+
+```ini
+[web]
+rpc-allow-list =
+    platform.presentation: resolve, list_formats, list_transforms, describe_transform, chain_report, compile_pattern, edge_report, preview, check_references, discover
+    platform.resource_bridge: statistics
+```
+
+The config store, the driver and the control service's lifecycle are on the proxy's fixed deny-list and are reached
+only through their dedicated endpoints, which the allow-list does not govern. The agents themselves need no change:
+their exported RPCs carry no capability requirement.
 
 ## Develop
 
