@@ -68,6 +68,8 @@ def make_fake_vui() -> FastAPI:
     app.state.access_tokens = {'access-1'}
     app.state.refresh_tokens = {'refresh-1'}
     app.state.rotations = 0
+    app.state.metadata = True          # the web service sends ETag/Config-Type and answers metadata=true (extra_fixes)
+    app.state.not_modified = 0
 
     def check(authorization: str | None):
         token = (authorization or '').removeprefix('Bearer ').removeprefix('BEARER ').strip()
@@ -143,12 +145,20 @@ def make_fake_vui() -> FastAPI:
         check(authorization)
         return list(app.state.store)
 
+    def etag_of(kind: str, text: str) -> str:
+        import hashlib
+        return '"' + hashlib.sha256(f'{kind}\n{text}'.encode()).hexdigest()[:32] + '"'
+
     @app.get(f'/vui/platforms/{PLATFORM}/agents/{{identity}}/configs')
-    async def configs(identity: str, authorization: str | None = Header(default=None)):
+    async def configs(identity: str, request: Request, authorization: str | None = Header(default=None)):
         check(authorization)
         if identity not in app.state.store:
             raise HTTPException(400, {'error': f'No configuration store for {identity}'})
-        return links(f'/vui/platforms/{PLATFORM}/agents/{identity}/configs', list(app.state.store[identity]))
+        body = links(f'/vui/platforms/{PLATFORM}/agents/{identity}/configs', list(app.state.store[identity]))
+        if request.query_params.get('metadata') == 'true' and app.state.metadata:
+            body['configs'] = {name: {'type': kind, 'modified': None, 'etag': etag_of(kind, text), 'size': len(text), 'link': body['links'][name]}
+                               for name, (kind, text) in app.state.store[identity].items()}
+        return body
 
     @app.api_route(f'/vui/platforms/{PLATFORM}/agents/{{identity}}/configs/{{name:path}}', methods=['GET', 'PUT', 'DELETE'])
     async def config(identity: str, name: str, request: Request, authorization: str | None = Header(default=None)):
@@ -158,9 +168,13 @@ def make_fake_vui() -> FastAPI:
             if name not in store:
                 raise HTTPException(400, {'error': f'No configuration file "{name}"'})
             kind, text = store[name]
+            headers = {'ETag': etag_of(kind, text), 'Config-Type': kind} if app.state.metadata else {}
+            if app.state.metadata and request.headers.get('if-none-match') == headers['ETag']:
+                app.state.not_modified += 1
+                return Response(status_code=304, headers=headers)
             accept = request.headers.get('accept', 'application/json')
             if 'text/plain' in accept:
-                return Response(text, media_type='text/plain')
+                return Response(text, media_type='text/plain', headers=headers)
             if 'text/csv' in accept:
                 if kind != 'csv':
                     raise HTTPException(406, {'Error': 'not csv'})
@@ -194,6 +208,33 @@ def make_fake_vui() -> FastAPI:
                     'data_format': 'sunspec_client', 'target_format': body['args'][1] if len(body.get('args', [])) > 1 else None,
                     'path': ['sunspec_client', 'sunspec', '61850', 'openfmb.solar', 'openfmb.solar.reading'], 'retention': 0.58,
                     'parameters': {'mrid': '7d1a2b3c-0000-4000-8000-000000000001'}, 'encoding': 'protobuf'}
+        if method == 'chain_report':
+            return {'path': ['sunspec_client', 'sunspec', '61850', 'openfmb.solar', 'openfmb.solar.reading'], 'retention': 0.58,
+                    'hops': [{'input': 'sunspec_client', 'output': 'sunspec', 'in': 112, 'kept': 104, 'lost': 8, 'lost_fields': ['701_ID'], 'retention': 0.93}],
+                    'targets': [{'target': 'readingMMXU.W.net.cVal.mag', 'source': 'W', 'fidelity': 1.0, 'functions': []}],
+                    'unmapped_targets': [{'target': 'readingMMXU.Hz.mag', 'lost_at': '61850 → openfmb.solar'}]}
+        if method == 'list_formats':
+            return {'61850': {'hub': True, 'declared': False, 'proto': None, 'scaling': None, 'universe': 400, 'edges_out': ['sunspec'], 'edges_in': ['sunspec']},
+                    'sunspec_client': {'hub': False, 'declared': True, 'proto': None, 'scaling': 'transform', 'universe': 2, 'edges_out': ['sunspec'], 'edges_in': []}}
+        if method == 'list_transforms':
+            return [{'input': 'sunspec', 'output': '61850', 'origin': 'bundled', 'retention': 0.7, 'lossiness_override': None, 'fields': 87, 'unmapped_targets': 3},
+                    {'input': 'sunspec_client', 'output': 'sunspec', 'origin': 'local', 'retention': 0.93, 'lossiness_override': None, 'fields': 2, 'unmapped_targets': 0}]
+        if method == 'describe_transform':
+            return {'input': body['args'][0], 'output': body['args'][1], 'pattern': {'#': 'transform(device_values())'}, 'retention': 0.9, 'weight': 1,
+                    'fields': 1, 'unmapped_targets': [], 'lossiness_override': None, 'universe': 2, 'mappings': [{'target': 'W', 'source': '701_W', 'fidelity': 1.0, 'functions': []}], 'source_universe': ['701_W']}
+        if method == 'compile_pattern':
+            return {'ok': True, 'mappings': [], 'unmapped_targets': [], 'unknown_functions': [], 'warnings': []}
+        if method == 'statistics':
+            return {'matrix/SunSpec/client>matrix/DNP3/served': {'messages': 12, 'writes': 3, 'publishes': 0, 'points_written': 6, 'points_skipped': 18, 'points_refused': 0,
+                                                              'transform_errors': 0, 'last_message': 1793000000.0, 'last_write': 1793000000.0, 'last_error': None, 'enabled': True, 'drifted': {}}}
+        if method == 'discover':
+            options = body.get('kwargs', {}).get('options') or (body['args'][1] if len(body.get('args', [])) > 1 else {})
+            topic = options.get('topic', 'site1/pv')
+            return {'protocol': body['args'][0], 'source': '10.0.0.21:502 unit 1', 'identity': {'Mn': 'SunSpecTest'}, 'remote_id': ['tcp', '10.0.0.21', '502', '1'], 'models': [1, 701], 'points': 2, 'notes': [],
+                    'entries': [{'identity': 'platform.driver', 'name': f'registry_configs/{topic.split("/")[-1]}.csv', 'type': 'csv', 'data': [{'volttron_point_name': '701_W', 'address': 40084, 'data_type': 'int16', 'data_source': 'short_poll'}]},
+                                {'identity': 'platform.driver', 'name': f'devices/{topic}', 'type': 'json', 'data': {'driver_type': 'modbus', 'remote_config': {'driver_type': 'modbus', 'device_address': '10.0.0.21'}, 'registry_config': f'config://registry_configs/{topic.split("/")[-1]}.csv', 'publish_depth_first_multi': True}},
+                                {'identity': 'platform.presentation', 'name': 'config', 'type': 'json', 'fragment': {'formats': {'pv': {'hub': False, 'fields': ['701_W']}}, 'transforms': [{'input_format': 'pv', 'output_format': 'sunspec', 'pattern': {}}],
+                                                                                                                      'mappings': [{'uai': ['devices', *topic.split('/')], 'resource_type': 'canonical', 'resource': {'data_format': 'pv', 'owner': 'platform.driver', 'publication_topic': f'devices/{topic}/multi', 'rpc_topic': f'devices/{topic}'}}]}}]}
         return {'echo': {'identity': identity, 'method': method, 'body': body}}
 
     return app

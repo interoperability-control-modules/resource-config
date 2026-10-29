@@ -45,7 +45,12 @@ cards, Add alias with deliveries), Devices (tree, device card with the generated
 switch/copy/import/export), Agents (state, lifecycle, generated driver form), Formats, Transforms (pattern view and
 raw edit), Bridges (device bridges and remote topics), Pending changes.
 
-Waiting on the platform side: the chain report, coverage, bundled transforms and the transform builder need the
-service RPCs `list_formats`, `describe_transform`, `compile_pattern`, `preview` and `edge_report`; the Activity card
-needs the Resource Bridge's statistics RPC; cheaper polling needs the config-metadata headers planned for
-volttron-lib-web; Discover needs the generators behind an endpoint.
+Platform-side items now in place and wired (2026-10-29): the service RPCs `list_formats`, `list_transforms`,
+`describe_transform`, `chain_report`, `compile_pattern`, `preview`, `edge_report`, `check_references` and `discover`
+(chain report dialog, bundled/local transform groups, pattern check, live format edges, the Discover dialog on
+Devices); the Resource Bridge's `statistics` RPC (Activity card); the config-metadata headers of volttron-lib-web
+(`If-None-Match`, 304, `metadata=true` listings) when the platform offers them, hash-based detection otherwise.
+
+Waiting on a real platform: the volttron-lib-web changes live on its `extra_fixes` branch until released; the
+platform's `rpc-allow-list` must name `platform.presentation` and `platform.resource_bridge`; the derhost dialect is
+untested against fastlib; interface models do not yet carry layout hints (the catalog's own hints are used).

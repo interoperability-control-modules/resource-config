@@ -143,15 +143,33 @@ class VUIClient:
         self._raise_for(response, f'list configs of {identity}')
         return list(response.json().get('links', {}))
 
-    async def get_config(self, identity: str, name: str) -> ConfigEntry:
+    async def get_config(self, identity: str, name: str, known: ConfigEntry | None = None) -> ConfigEntry | None:
         """Fetch the stored text (``Accept: text/plain`` returns the text of any entry) and type it locally unless the
-        web service declares the type and validator in its headers."""
-        response = await self._request('GET', self._p(f'/agents/{identity}/configs/{name}'), headers={'Accept': 'text/plain'})
+        web service declares the type and validator in its headers. With ``known`` (the entry as last seen) and a web
+        service that sends validators, the request is conditional and ``None`` means "unchanged"."""
+        headers = {'Accept': 'text/plain'}
+        if known is not None and known.etag and self._metadata_headers_seen:
+            headers['If-None-Match'] = known.etag
+        response = await self._request('GET', self._p(f'/agents/{identity}/configs/{name}'), headers=headers)
+        if response.status_code == 304:
+            return None
         self._raise_for(response, f'get {identity}/{name}')
         declared = response.headers.get('Config-Type') or response.headers.get('X-Config-Type')
         etag, modified = response.headers.get('ETag'), response.headers.get('Last-Modified')
         self._metadata_headers_seen = self._metadata_headers_seen or bool(declared or etag)
         return ConfigEntry.from_text(identity, name, response.text, declared, etag, modified)
+
+    async def list_configs_with_metadata(self, identity: str) -> dict[str, dict] | None:
+        """``?metadata=true``: type, modified and etag per entry in one request, or ``None`` on an older web service."""
+        response = await self._request('GET', self._p(f'/agents/{identity}/configs'), params={'metadata': 'true'})
+        if response.status_code != 200:
+            return None
+        body = response.json()
+        configs = body.get('configs') if isinstance(body, dict) else None
+        if configs is None:
+            return None
+        self._metadata_headers_seen = True
+        return configs
 
     async def put_config(self, identity: str, name: str, kind: str, text: str) -> None:
         response = await self._request('PUT', self._p(f'/agents/{identity}/configs/{name}'), content=text.encode('utf-8'),

@@ -36,6 +36,41 @@ async def resolve(body: Resolve, request: Request, session: Session = Depends(cu
         raise HTTPException(e.status, str(e))
 
 
+class Chain(BaseModel):
+    input_format: str
+    output_format: str
+    fields: list[str] | None = None
+
+
+class Pattern(BaseModel):
+    pattern: Any
+    input_format: str | None = None
+
+
+@router.post('/interop/chain_report')
+async def chain_report(body: Chain, request: Request, session: Session = Depends(current_session)):
+    try:
+        return await session.client.rpc(request.app.state.settings.presentation_identity, 'chain_report', body.input_format, body.output_format, body.fields)
+    except PlatformError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@router.post('/interop/describe_transform')
+async def describe_transform(body: Chain, request: Request, session: Session = Depends(current_session)):
+    try:
+        return await session.client.rpc(request.app.state.settings.presentation_identity, 'describe_transform', body.input_format, body.output_format)
+    except PlatformError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@router.post('/interop/compile_pattern')
+async def compile_pattern(body: Pattern, request: Request, session: Session = Depends(current_session)):
+    try:
+        return await session.client.rpc(request.app.state.settings.presentation_identity, 'compile_pattern', body.pattern, body.input_format)
+    except PlatformError as e:
+        raise HTTPException(e.status, str(e))
+
+
 @router.post('/interop/rpc')
 async def call(body: Call, request: Request, session: Session = Depends(current_session)):
     settings = request.app.state.settings

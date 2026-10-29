@@ -10,10 +10,11 @@ const DEVICE_FIELDS = ['registry_config', 'interval', 'polling_group', 'group', 
   'publish_depth_first_single', 'publish_breadth_first_single', 'all_publish_interval', 'equipment_specific_fields', 'driver_config', 'driver_type', 'driver_role', 'heart_beat_point'];
 
 export function render({ side, main, ctx, params }) {
+  if (params.discover && !document.querySelector('.dialog')) setTimeout(discoverDialog, 0);   // #/devices?discover=1 opens the dialog
   const devices = state.model.devices;
   const selected = devices.find((d) => d.topic === params.topic) || devices[0];
   if (side) side.append(tree(devices, selected && selected.topic));
-  if (!selected) { main.append(h('div', { class: 'empty' }, 'No devices are configured. ', btn('+ Device', addDevice))); return; }
+  if (!selected) { main.append(h('div', { class: 'empty' }, 'No devices are configured. ', btn('+ Device', addDevice), ' ', btn('Discover ▸', discoverDialog, { primary: true }))); return; }
   renderDevice(main, ctx, selected, !!params.edit);
 }
 
@@ -29,7 +30,7 @@ function tree(devices, selected) {
         dot(child.device.active === false ? 'off' : 'ok'), h('span', { style: { fontWeight: child.device.topic === selected ? 600 : 400 } }, name), tag(`${child.device.driver_type || '?'} · ${child.device.driver_role || 'client'}`))
     : h('div', { style: { marginLeft: `${depth ? 9 : 0}px` } }, h('div', { style: { paddingLeft: `${depth * 14}px`, fontWeight: 600, padding: '3px 0' } }, '▾ ', name), ...build(child, depth + 1)));
   el.append(h('div', { class: 't2' }, h('div', { class: 'clade sel' }, ...build(root, 0))), h('div', { class: 'legend' }, note('tree by topic segment · leaves are devices')),
-    h('div', { class: 'bar' }, btn('+ Device', addDevice)));
+    h('div', { class: 'bar' }, btn('+ Device', addDevice), btn('Discover ▸', discoverDialog, { primary: true })));
   const registries = state.model.registries || [];
   el.append(section('Registries', () => h('div', {}, ...registries.map((r) => h('div', { class: 'tree' }, h('div', {}, r.name.replace('registry_configs/', ''), ' ', tag(`${r.devices.length} device${r.devices.length === 1 ? '' : 's'} · ${r.rows} rows`), r.devices.length ? null : [' ', btn('delete', () => deleteRegistry(r.name))])))),
     { collapsed: true, note: `${registries.length} · ${registries.filter((r) => !r.devices.length).length} unreferenced` }));
@@ -197,3 +198,77 @@ async function exportRegistry(d) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([entry.text], { type: 'text/csv' })); a.download = d.registry.split('/').pop(); a.click();
 }
 async function deleteRegistry(name) { try { await api.deleteEntry('platform.driver', name); toast('deleted', 'ok'); await refreshModel(false); } catch (e) { toast(e.message, 'err'); } }
+
+
+// Discover (design DS1/DS2): Source asks for what the generator needs; Review is read-only; the result is one pending set.
+function discoverDialog() {
+  const form = { protocol: 'sunspec', source: 'unit', host: '', port: '', unit: 1, role: 'client', scaling: 'transform', topic: '', publish: 'multi', interval: '', registry_name: '', file: null, device_format: '' };
+  const where = h('div', { class: 'grid kv1' });
+  const fileInput = () => h('input', { type: 'file', accept: '.json', onChange: (e) => (form.file = e.target.files[0]) });
+  const renderWhere = () => {
+    where.replaceChildren(h('span', { class: 'k' }, 'Protocol'), select(form.protocol, [['sunspec', 'SunSpec (Modbus)'], ['dnp3', 'DNP3 (IEEE 1815.2 profile)'], ['ieee2030_5', 'IEEE 2030.5 (mirror of a device)']], { onChange: (v) => { form.protocol = v; renderWhere(); }, width: '260px' }));
+    if (form.protocol === 'sunspec') {
+      where.append(h('span', { class: 'k' }, 'Source'), radios('disc-src', form.source, [['unit', 'a reachable unit'], ['file', 'a pysunspec2 scan file']], (v) => { form.source = v; renderWhere(); }));
+      if (form.source === 'unit') where.append(
+        h('span', { class: 'k' }, 'Address'), input(form.host, { mono: true, width: '220px', placeholder: '192.168.1.20', onChange: (v) => (form.host = v) }),
+        h('span', { class: 'k' }, 'Port · unit'), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.port, { num: true, width: '90px', placeholder: '502', onChange: (v) => (form.port = v) }), input(form.unit, { num: true, width: '70px', onChange: (v) => (form.unit = v) })));
+      else where.append(h('span', { class: 'k' }, 'Scan file'), fileInput());
+      where.append(h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (slave)']], (v) => (form.role = v)),
+        h('span', { class: 'k' }, 'Scale factors ', info("transform: the device format's transform applies the scale factors; driver: each point scales itself with scale_sf() in its Transform column.")),
+        select(form.scaling, [['transform', 'transform'], ['driver', 'driver']], { onChange: (v) => (form.scaling = v), width: '200px' }));
+    }
+    if (form.protocol === 'dnp3') where.append(
+      h('span', { class: 'k' }, 'Profile ', info('An IEEE 1815.2 device profile (JSON) from the test tool or the vendor.')), fileInput(),
+      h('span', { class: 'k' }, 'Outstation'), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.host, { mono: true, width: '180px', placeholder: '127.0.0.1', onChange: (v) => (form.host = v) }), input(form.port, { num: true, width: '90px', placeholder: '20000', onChange: (v) => (form.port = v) })),
+      h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (outstation)']], (v) => (form.role = v)));
+    if (form.protocol === 'ieee2030_5') where.append(
+      h('span', { class: 'k' }, 'Device to mirror ', info('The 2030.5 point map is derived from the format of the resource another device publishes.')),
+      select('', state.model.devices.filter((d) => d.resource).map((d) => [d.topic, d.topic]), { blank: 'choose…', width: '320px', onChange: (v) => { const d = state.model.devices.find((x) => x.topic === v); const res = d && state.model.resources.canonical.find((c) => c.topic === d.resource); form.device_format = res ? res.format : ''; } }),
+      h('span', { class: 'k' }, 'Server URL'), input(form.host, { mono: true, width: '280px', placeholder: 'https://127.0.0.1:8443', onChange: (v) => (form.host = v) }),
+      h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client'], ['server', 'server']], (v) => (form.role = v)));
+  };
+  renderWhere();
+  const becomes = h('div', { class: 'grid kv1' },
+    h('span', { class: 'k' }, 'Topic ', info("Free-form. It names the device entry and the resource's RPC topic; with devices/ in front it is the UAI of the resource the device publishes.")), input('', { mono: true, width: '100%', placeholder: 'site1/feeder1/pv_inverter', onChange: (v) => (form.topic = v) }),
+    h('span', { class: 'k' }, 'Publishes'), radios('disc-pub', form.publish, [['all', 'all'], ['multi', 'multi']], (v) => (form.publish = v)),
+    h('span', { class: 'k' }, 'Interval'), h('span', { style: { display: 'flex', alignItems: 'center', gap: '6px' } }, input('', { num: true, width: '90px', placeholder: '60', onChange: (v) => (form.interval = v) }), note('s')),
+    h('span', { class: 'k' }, 'Registry name'), input('', { mono: true, width: '100%', placeholder: 'registry_configs/<last topic segment>.csv', onChange: (v) => (form.registry_name = v) }));
+  const body = h('div', {}, h('div', { class: 'steps' }, h('span', { class: 'on' }, '1 Source'), h('span', {}, '2 Review')),
+    h('div', { class: 'two', style: { gap: '24px' } }, h('div', {}, h('h3', { style: { marginTop: 0 } }, 'Where it comes from'), where), h('div', {}, h('h3', { style: { marginTop: 0 } }, 'What it becomes'), becomes)));
+  const close = dialog({ title: 'Discover a device', width: 900, body, actions: [{ label: 'Cancel', onClick: (c) => c() }, { label: 'Scan and review ▸', primary: true, onClick: async () => {
+    if (!form.topic) return toast('a topic is required', 'err');
+    const options = { topic: form.topic, publish: form.publish, role: form.role, scaling: form.scaling };
+    if (form.interval) options.interval = Number(form.interval);
+    if (form.registry_name) options.registry_name = form.registry_name;
+    if (form.protocol === 'sunspec') {
+      if (form.source === 'file') { if (!form.file) return toast('choose a scan file', 'err'); options.device_json = await form.file.text(); }
+      else { if (!form.host) return toast('an address is required', 'err'); options.host = form.host; options.port = Number(form.port) || 502; options.unit = Number(form.unit) || 1; }
+    }
+    if (form.protocol === 'dnp3') { if (!form.file) return toast('choose a profile', 'err'); options.profile_json = await form.file.text(); if (form.host) options.outstation_ip = form.host; if (form.port) options.port = Number(form.port); }
+    if (form.protocol === 'ieee2030_5') { if (!form.device_format) return toast('choose the device to mirror', 'err'); options.device_format = form.device_format; if (form.host) options.server_url = form.host; }
+    toast('scanning…');
+    try { const result = await api.discover(form.protocol, options); close(); reviewDialog(result, form); } catch (e) { toast(`discovery failed: ${e.message}`, 'err'); }
+  } }] });
+}
+
+function reviewDialog(result, form) {
+  const entries = result.entries || [];
+  const registry = entries.find((e) => e.type === 'csv');
+  const rows = (registry && registry.data) || [];
+  const columns = rows.length ? Object.keys(rows[0]) : [];
+  const grid = h('table', {}, h('tr', {}, ...columns.map((c) => h('th', {}, c))), ...rows.slice(0, 300).map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|address|index/i.test(c) ? 'mono' : '' }, String(r[c] ?? ''))))));
+  const identity = Object.entries(result.identity || {}).map(([k, v]) => `${k} ${v}`).join(' · ');
+  const summary = h('div', { class: 'note', style: { marginBottom: '8px' } }, identity ? `${identity} · ` : '', result.models ? `models ${result.models.join(', ')} · ` : '', `${result.points ?? rows.length} points`);
+  if (result.remote_id) summary.append(' · device UAI ', uai(result.remote_id, { size: 'small' }));
+  dialog({ title: 'Discover a device', width: 900, body: h('div', {},
+    h('div', { class: 'steps' }, h('span', {}, `1 Source · ${form.protocol} · ${result.source || ''} · ${form.role} · ${form.publish}`), h('span', { class: 'on' }, '2 Review')),
+    summary,
+    h('h3', {}, 'Will create as one pending set'),
+    h('table', {}, h('tr', {}, h('th', {}, 'identity'), h('th', {}, 'entry'), h('th', {}, 'content')), ...entries.map((e) => h('tr', {}, h('td', {}, e.identity), h('td', { class: 'mono' }, e.name), h('td', {}, e.summary || e.type)))),
+    h('h3', {}, 'Registry ', note('· read-only here; edit it on the device after applying')),
+    h('div', { style: { overflow: 'auto', maxHeight: '240px', border: '1px solid var(--line)', borderRadius: '6px' } }, grid),
+    (result.notes || []).length ? h('div', { class: 'note', style: { marginTop: '8px' } }, 'Notes: ', (result.notes || []).join(' · ')) : null),
+    actions: [{ label: '◂ Back', onClick: (c) => { c(); discoverDialog(); } }, { label: 'Add to pending changes ▸', primary: true, onClick: async (c) => {
+      try { await api.addPending(entries); toast('added to the pending set', 'ok'); c(); await refreshModel(false); navigate('pending'); } catch (e) { toast(e.message, 'err'); }
+    } }] });
+}

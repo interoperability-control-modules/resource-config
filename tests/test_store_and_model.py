@@ -54,3 +54,15 @@ async def test_model_derives_sources_aliases_deliveries_and_consumers(vui, setti
     formats = {f['name']: f for f in model['formats']}
     assert formats['61850']['kind'] == 'hub' and formats['sunspec_client']['kind'] == 'device' and formats['openfmb.solar.reading']['kind'] == 'bus'
     assert model['remote_topics'][0]['bus'] == 'site_broker' and model['bridges'][1]['source']['bus'] is True
+
+
+async def test_refresh_uses_validators_when_the_platform_sends_them(vui, fake_platform):
+    store = Store()
+    await store.refresh(vui)                       # first pass reads everything
+    before = fake_platform.state.not_modified
+    assert await store.refresh(vui) == []          # second pass: the listing's etags settle every entry
+    assert fake_platform.state.not_modified == before        # not even a 304 was needed
+    fake_platform.state.metadata = False           # an older web service: fall back to reading the text
+    store2 = Store()
+    await store2.refresh(vui)
+    assert len(store2.entries) == len(store.entries) and store2.get('platform.driver', 'devices/matrix/SunSpec/client').etag.startswith('"')

@@ -89,7 +89,7 @@ class DerhostClient:
                 names.append(e[len(identity) + 1:])
         return names
 
-    async def get_config(self, identity: str, name: str) -> ConfigEntry:
+    async def get_config(self, identity: str, name: str, known: ConfigEntry | None = None) -> ConfigEntry:
         response = await self._request('GET', f'/config-store/{identity}/{name}')
         declared = response.headers.get('Config-Type')
         return ConfigEntry.from_text(identity, name, response.text, declared, response.headers.get('ETag'),

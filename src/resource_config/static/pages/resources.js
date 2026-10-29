@@ -2,7 +2,7 @@
 import { api } from '../api.js';
 import { h, uai, dot, hollow, tag, kind, note, btn, mb, card, section, kv, steps, meter, dialog, toast, input, select, radios, checkbox, info } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
-import { rawEditor, menu, healthCard, checksCard, consumersCard, updateServiceConfig, formatOptions, deleteWithDependents } from './common.js';
+import { rawEditor, menu, healthCard, checksCard, consumersCard, updateServiceConfig, formatOptions, deleteWithDependents, chainReport } from './common.js';
 
 export const title = 'Resources';
 export const railBadges = (s) => [h('span', { class: 'pill n' }, String(s.model.resources.canonical.length))];
@@ -154,7 +154,7 @@ function renderAlias(main, ctx, a, c) {
   api.resolve(a.uai, a.format, a.deliveries.some((d) => d.kind === 'device') ? 'write' : 'read').then((r) => {
     resolveBox.replaceChildren(steps(r.path || [], Object.fromEntries((r.path || []).map((f) => [f, HUBS.includes(f) ? 'hub' : f === (r.path || [])[0] ? 'source format' : f === a.format ? 'this alias' : 'bundled']))),
       h('div', { class: 'tiles' },
-        h('div', { class: 'tile' }, h('h6', {}, 'Retention'), h('div', { class: 'big' }, r.retention != null ? `${Math.round(r.retention * 100)} %` : '—'), meter(r.retention), note(`${(r.path || []).length ? (r.path || []).length - 1 : 0} hops`)),
+        h('div', { class: 'tile' }, h('h6', {}, 'Retention'), h('div', { class: 'big' }, r.retention != null ? `${Math.round(r.retention * 100)} %` : '—'), meter(r.retention), note(`${(r.path || []).length ? (r.path || []).length - 1 : 0} hops`), h('a', { class: 'rep', onClick: () => chainReport((r.path || [])[0] || a.format, (r.path || []).slice(-1)[0] || a.format) }, 'per hop and per field ▸')),
         h('div', { class: 'tile' }, h('h6', {}, 'Formats'), h('div', {}, `${r.data_format || '?'} → ${r.target_format || a.format}`), note('as the service resolves this alias')),
         h('div', { class: 'tile' }, h('h6', {}, 'Wire'), h('div', {}, h('b', {}, a.encoding), a.edition ? ` · edition ${a.edition}` : ''), note(r.codec ? `proto ${r.codec.proto || JSON.stringify(r.codec)}` : 'json on the local bus'))));
   }).catch((e) => resolveBox.replaceChildren(h('div', { class: 'warn' }, `The service could not resolve this alias: ${e.message}`)));
@@ -169,7 +169,7 @@ function renderAlias(main, ctx, a, c) {
     section('Canonical resource', c ? h('div', { class: 'subcard' }, dot(), uai(c.uai, { box: false, onClick: () => navigate('resources', { uai: c.topic }) }), kind('canonical'), note(`${c.format} · ${c.source && c.source.kind === 'device' ? 'device ' + c.source.device : c.owner}`), h('span', { class: 'sp' }), btn('Open ▸', () => navigate('resources', { uai: c.topic })))
       : h('div', { class: 'warn' }, `dangling: references ${a.references.join('/')}, which is not a canonical resource`), { note: 'what this is a form of' }),
     section('Delivered to', deliveries, { note: `${a.deliveries.length} · what carries this form; several may share one alias`, actions: [btn('+ Delivery', () => addDelivery(a, c))] }),
-    section('How this resolves', resolveBox, { note: a.deliveries.some((d) => d.kind === 'device') ? 'write' : 'read' }),
+    section('How this resolves', resolveBox, { note: a.deliveries.some((d) => d.kind === 'device') ? 'write' : 'read', actions: [btn('Chain report ▸', () => chainReport(a.deliveries.some((d) => d.kind === 'device') ? a.format : (c ? c.format : a.format), a.deliveries.some((d) => d.kind === 'device') ? (c ? c.format : a.format) : a.format)), btn('Open transform ▸', () => navigate('transforms', { input: c ? c.format : a.format, output: a.format }))] }),
     section('Static parameters', params.length ? paramTable : note('the chain references none'), { note: 'alias values override the canonical\'s' }),
   ];
   main.append(card({ title: uai(a.uai, { box: false }), badge: kind('alias', true), boxes: [c ? h('span', { class: 'mb' }, 'of ', h('a', { onClick: () => navigate('resources', { uai: c.topic }) }, c.uai.join(' / '))) : null, mb('format', a.format)],

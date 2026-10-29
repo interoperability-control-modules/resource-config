@@ -55,3 +55,27 @@ def test_pending_set_applies_in_order(logged_in, fake_platform):
 def test_websocket_requires_session_and_sends_hello(logged_in):
     with logged_in.websocket_connect('/ws') as socket:
         assert socket.receive_json()['type'] == 'hello'
+
+
+def test_discover_returns_pending_entries_with_the_fragment_merged(logged_in):
+    ui = logged_in
+    result = ui.post('/api/discover', json={'protocol': 'sunspec', 'options': {'topic': 'site1/feeder1/pv', 'host': '10.0.0.21'}}).json()
+    assert result['remote_id'] == ['tcp', '10.0.0.21', '502', '1']
+    registry, device, service = result['entries']
+    assert registry['name'] == 'registry_configs/pv.csv' and registry['type'] == 'csv' and 'points' in registry['summary']
+    assert device['name'] == 'devices/site1/feeder1/pv'
+    assert service['identity'] == 'platform.presentation' and 'pv' in service['data']['formats']
+    topics = ['/'.join(m['uai']) for m in service['data']['mappings']]
+    assert 'devices/site1/feeder1/pv' in topics and 'matrix/SunSpec/client' in topics      # merged, not replaced
+    assert ui.post('/api/pending', json=result['entries']).status_code == 200
+
+
+def test_model_is_enriched_from_the_running_agents(logged_in):
+    model = logged_in.get('/api/model').json()
+    assert model['formats_live'] and model['transforms_live'] and model['statistics_live']
+    kinds = {t['kind'] for t in model['transforms']}
+    assert 'bundled' in kinds and 'local' in kinds
+    bridge = next(b for b in model['bridges'] if b['name'] == 'matrix/SunSpec/client>matrix/DNP3/served')
+    assert bridge['stats']['messages'] == 12
+    report = logged_in.post('/api/interop/chain_report', json={'input_format': 'sunspec_client', 'output_format': 'openfmb.solar.reading'}).json()
+    assert report['hops'][0]['kept'] == 104

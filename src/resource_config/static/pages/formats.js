@@ -2,7 +2,7 @@
 import { api } from '../api.js';
 import { h, dot, tag, kind, note, btn, mb, card, section, kv, toast } from '../ui.js';
 import { state, navigate, collapseHandle } from '../app.js';
-import { rawEditor, menu, checksCard } from './common.js';
+import { rawEditor, menu, checksCard, chainReport } from './common.js';
 
 export const title = 'Formats';
 export const railBadges = (s) => [h('span', { class: 'pill n' }, String(s.model.formats.length))];
@@ -28,14 +28,14 @@ export function render({ side, main, ctx, params }) {
   const f = selected;
   const edges = state.model.transforms.filter((t) => t.input === f.name || t.output === f.name);
   main.append(card({ title: h('span', { style: { fontSize: '18px', fontWeight: 600 } }, f.name), badge: kind(f.kind === 'bus' ? 'bus format' : f.kind),
-    boxes: [mb('standard', f.standard), mb('declared', f.declared ? 'in the service config' : 'bundled or implied'), f.proto ? mb('proto', f.proto) : null, f.fields ? mb('fields', String(f.fields)) : null],
+    boxes: [mb('standard', f.standard), mb('declared', f.declared ? 'in the service config' : 'bundled or implied'), f.proto ? mb('proto', f.proto) : null, f.universe != null ? mb('universe', `${f.universe} fields`) : f.fields ? mb('fields', String(f.fields)) : null],
     buttons: [btn('Raw JSON', () => rawEditor('platform.presentation', 'config')), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }]))],
     sections: [
-      section('Edges', edges.length ? h('table', {}, h('tr', {}, h('th', {}, 'from'), h('th', {}, 'to'), h('th', {}, 'kind'), h('th', {})), ...edges.map((t) => h('tr', {}, h('td', {}, t.input), h('td', {}, t.output), h('td', {}, t.kind), h('td', {}, h('a', { onClick: () => navigate('transforms', { input: t.input, output: t.output }) }, 'transform ▸')))))
-        : note('no local transforms touch this format; bundled edges are listed once the service exports list_formats and describe_transform'), { note: 'local transforms declared in the service config', actions: [btn('+ Edge', () => navigate('transforms', { input: f.name, new: 1 }))] }),
+      section('Edges', edges.length ? h('table', {}, h('tr', {}, h('th', {}, 'from'), h('th', {}, 'to'), h('th', {}, 'origin'), h('th', {}, 'retention'), h('th', {}, 'fields'), h('th', {}), h('th', {})), ...edges.map((t) => h('tr', {}, h('td', {}, t.input), h('td', {}, t.output), h('td', {}, t.kind), h('td', {}, t.retention != null ? `${Math.round(t.retention * 100)} %` : '—'), h('td', {}, t.fields != null ? `${t.fields}${t.unmapped_targets ? ' · ' + t.unmapped_targets + ' null' : ''}` : '—'), h('td', {}, h('a', { onClick: () => chainReport(t.input, t.output) }, 'report ▸')), h('td', {}, h('a', { onClick: () => navigate('transforms', { input: t.input, output: t.output }) }, 'transform ▸')))))
+        : note(state.model.transforms_live ? 'no transform touches this format' : 'only local transforms are known: the service did not answer list_transforms'), { note: `${edges.length} edges · ${state.model.transforms_live ? 'bundled and local' : 'local only'}`, actions: [btn('+ Edge', () => navigate('transforms', { input: f.name, new: 1 }))] }),
       section('Used by', h('div', { class: 'uby' }, ...f.resources.map((r) => h('div', {}, 'resource ', h('a', { onClick: () => navigate('resources', state.model.resources.aliases.some((a) => a.topic === r) ? { alias: r } : { uai: r }) }, r))), ...f.devices.map((d) => h('div', {}, 'device ', h('a', { onClick: () => navigate('devices', { topic: d }) }, d))), f.resources.length || f.devices.length ? null : note('nothing yet')), { note: `${f.resources.length} resources · ${f.devices.length} devices` })] }));
   if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })), checksCard([f.kind === 'device' && !f.declared ? ['warn', 'a device format that is not declared in the service config'] : ['ok', `${f.kind} format`]]),
-    h('div', { class: 'card' }, h('h4', {}, 'Graph'), note('Edge reports and the field universe need the service RPCs list_formats, describe_transform and edge_report, which are not exported yet.')));
+    h('div', { class: 'card' }, h('h4', {}, 'Graph'), f.live ? h('div', {}, h('div', { class: 'hrow' }, h('span', {}, 'universe'), h('span', {}, `${f.universe} fields`)), h('div', { class: 'hrow' }, h('span', {}, 'edges out'), h('span', {}, (f.edges_out || []).join(', ') || '—')), h('div', { class: 'hrow' }, h('span', {}, 'edges in'), h('span', {}, (f.edges_in || []).join(', ') || '—'))) : note('the service did not answer list_formats; only what the store declares is shown')));
 }
 function addFormat() {
   let name = '', fields = '';

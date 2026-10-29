@@ -46,15 +46,22 @@ class Store:
                 identities = await client.list_stores()
                 seen: set[tuple[str, str]] = set()
                 for identity in identities:
-                    for name in await client.list_configs(identity):
+                    listing = await client.list_configs_with_metadata(identity) if hasattr(client, 'list_configs_with_metadata') else None
+                    names = list(listing) if listing is not None else await client.list_configs(identity)
+                    for name in names:
                         key = (identity, name)
                         seen.add(key)
+                        old = self.entries.get(key)
+                        # A listing with validators settles "unchanged" without a request per entry.
+                        if listing is not None and old is not None and old.etag and listing[name].get('etag') == old.etag:
+                            continue
                         try:
-                            entry = await client.get_config(identity, name)
+                            entry = await client.get_config(identity, name, known=old)
                         except PlatformError as e:
                             _log.warning('could not read %s/%s: %s', identity, name, e)
                             continue
-                        old = self.entries.get(key)
+                        if entry is None:          # 304: unchanged
+                            continue
                         if old is None:
                             events.append({'kind': 'added', 'identity': identity, 'name': name})
                         elif old.hash != entry.hash:

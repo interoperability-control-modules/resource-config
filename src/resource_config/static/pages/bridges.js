@@ -2,7 +2,7 @@
 import { api } from '../api.js';
 import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, steps, meter, toast, dialog, select, input, radios, checkbox } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
-import { rawEditor, menu, checksCard, healthCard } from './common.js';
+import { rawEditor, menu, checksCard, healthCard, chainReport, activityCard } from './common.js';
 
 export const title = 'Bridges';
 export const railBadges = (s) => [h('span', { class: 'pill n' }, String(s.model.bridges.length + s.model.remote_topics.length))];
@@ -53,14 +53,14 @@ function renderBridge(main, ctx, b) {
     boxes: [mb('chain', sRes && tRes ? `${sRes.format} → … → ${tRes.format}` : '—'), mb('enabled', b.enabled ? 'yes' : 'no')],
     buttons: [btn(b.enabled ? 'Disable' : 'Enable', () => toggleBridge(b)), btn('Raw JSON', () => rawEditor('platform.resource_bridge', 'config')), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }, { header: 'This bridge' }, { label: 'Delete…', danger: true, onClick: () => deleteBridge(b) }]))],
     sections: [section('Ends', h('div', { class: 'two', style: { gap: '24px' } }, h('div', {}, h('h5', { style: { margin: '0 0 8px' } }, 'Source · read from'), endKv(b.source, sRes, sDev, true)), h('div', {}, h('h5', { style: { margin: '0 0 8px' } }, 'Target · written to'), endKv(b.target, tRes, tDev, false)))),
-      section('How this resolves', chainBox, { note: 'write' }),
+      section('How this resolves', chainBox, { note: 'write', actions: sRes && tRes ? [btn('Chain report ▸', () => chainReport(sRes.format, tRes.format))] : [] }),
       section('Delivery policy', () => note('reserved for the resource library\'s models (each · complete · merge · interval · trigger)'), { collapsed: true, note: 'not yet' })] }));
   if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })),
     checksCard([[sRes ? 'ok' : 'err', sRes ? 'source resolves' : 'source does not resolve'], [tRes ? 'ok' : 'err', tRes ? 'target resolves' : 'target does not resolve'],
       ...(tDev && tDev.registry_rows && tDev.driver_role !== 'client' ? [[tDev.registry_rows.some((r) => (r['Data Source'] || '').toLowerCase() === 'server') ? 'ok' : 'warn', 'target rows writable (Data Source = server)']] : []),
       ...(m.bridges.some((o) => o !== b && o.source.uai.join('/') === b.target.uai.join('/') && o.target.uai.join('/') === b.source.uai.join('/')) ? [['warn', 'pairs with a bridge in the other direction: the echo window applies']] : [])]),
     h('div', { class: 'card' }, h('h4', {}, 'Write tracking'), note('Only changes are written. What the target holds is known from its publications, this agent\'s writes and the driver\'s last RPC when older than stale_after.')),
-    h('div', { class: 'card' }, h('h4', {}, 'Activity'), note('Needs the Resource Bridge\'s statistics RPC, not yet available.')));
+    activityCard(b.stats));
 }
 function renderRemote(main, ctx, t) {
   const alias = state.model.resources.aliases.find((a) => a.topic === t.alias || a.topic === t.topic);
