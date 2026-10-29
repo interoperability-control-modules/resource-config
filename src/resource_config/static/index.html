@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>DER Control · Configure</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="styles.css">
+</head><body>
+<div id="app" class="app">
+  <div class="top"><span class="brand">DER Control</span><span class="right" id="topright"></span></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="panes" id="panes">
+    <div class="side" id="side"></div>
+    <div class="main" id="main"><div class="empty">Loading…</div></div>
+    <div class="ctx" id="ctx"></div>
+  </div>
+</div>
+<div class="statusbar" id="statusbar"></div>
+<div class="toasts" id="toasts"></div>
+<div id="login" class="login hidden">
+  <form class="box2" id="loginform">
+    <h2>Configure · sign in</h2>
+    <div class="note">The platform web user. The UI reaches the platform only through its web service.</div>
+    <label>Username</label><input class="in" name="username" autocomplete="username" required>
+    <label>Password</label><input class="in" type="password" name="password" autocomplete="current-password" required>
+    <div class="bar"><span class="sp"></span><button class="btn pri" type="submit">Sign in</button></div>
+    <div class="err" id="loginerror"></div>
+  </form>
+</div>
+<script type="module" src="app.js"></script>
+</body></html>

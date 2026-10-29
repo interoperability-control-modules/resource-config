@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "resource-config"
+version = "0.1.0a0"
+description = "Configuration UI for the DER control framework: resources, devices, formats, transforms, bridges and agents on a VOLTTRON or der-control-fastlib platform."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+    "httpx>=0.27",
+    "pydantic>=2.6",
+    "itsdangerous>=2.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+# The schema catalog reads the pydantic models of the components when they are importable; none is required.
+models = ["volttron-lib-base-driver", "volttron-platform-driver", "volttron-resource-bridge", "volttron-message-bus-adapter", "interoperability-service"]
+
+[project.scripts]
+resource-config = "resource_config.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+resource_config = ["static/**/*", "catalog/*.json"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

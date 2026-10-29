@@ -1,0 +1,5686 @@
+{
+ "interfaces": {
+  "bacnet": {
+   "point": {
+    "$defs": {
+     "DataSource": {
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "enum": [
+       "short_poll",
+       "long_poll",
+       "poll_once",
+       "static",
+       "never_poll",
+       "server"
+      ],
+      "title": "DataSource",
+      "type": "string"
+     }
+    },
+    "properties": {
+     "COV Flag": {
+      "default": false,
+      "title": "Cov Flag",
+      "type": "boolean"
+     },
+     "Data Source": {
+      "$ref": "#/$defs/DataSource",
+      "default": "short_poll"
+     },
+     "Notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+     },
+     "Property": {
+      "default": "present-value",
+      "title": "Property",
+      "type": "string"
+     },
+     "Reference Point Name": {
+      "default": "",
+      "title": "Reference Point Name",
+      "type": "string"
+     },
+     "Remote Writable": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Remote Writable"
+     },
+     "Unit Details": {
+      "default": "",
+      "title": "Unit Details",
+      "type": "string"
+     },
+     "Units": {
+      "default": "",
+      "title": "Units",
+      "type": "string"
+     },
+     "Volttron Point Name": {
+      "title": "Volttron Point Name",
+      "type": "string"
+     },
+     "Writable": {
+      "default": false,
+      "title": "Writable",
+      "type": "boolean"
+     },
+     "Write Priority": {
+      "default": 16,
+      "maximum": 16,
+      "minimum": 1,
+      "title": "Write Priority",
+      "type": "integer"
+     },
+     "active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Active"
+     },
+     "array_index": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Array Index"
+     },
+     "cov_increment": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Cov Increment"
+     },
+     "default_value": {
+      "default": null,
+      "title": "Default Value"
+     },
+     "instance": {
+      "title": "Instance",
+      "type": "integer"
+     },
+     "interval": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Interval"
+     },
+     "number_of_states": {
+      "default": 2,
+      "minimum": 1,
+      "title": "Number Of States",
+      "type": "integer"
+     },
+     "object_name": {
+      "default": "",
+      "title": "Object Name",
+      "type": "string"
+     },
+     "object_type": {
+      "title": "Object Type",
+      "type": "string"
+     },
+     "polling_group": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Polling Group"
+     },
+     "publish_breadth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First All"
+     },
+     "publish_breadth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Multi"
+     },
+     "publish_breadth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Single"
+     },
+     "publish_depth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First All"
+     },
+     "publish_depth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Multi"
+     },
+     "publish_depth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Single"
+     },
+     "reservation_required_for_write": {
+      "default": false,
+      "title": "Reservation Required For Write",
+      "type": "boolean"
+     },
+     "stale_timeout": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Stale Timeout"
+     },
+     "stale_timeout_multiplier": {
+      "default": null,
+      "title": "Stale Timeout Multiplier",
+      "type": "number"
+     },
+     "strict_all_publishes": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Strict All Publishes"
+     }
+    },
+    "required": [
+     "Volttron Point Name",
+     "object_type",
+     "instance"
+    ],
+    "title": "BacnetPointConfig",
+    "type": "object",
+    "x-hints": {
+     "COV Flag": {
+      "advanced": true
+     },
+     "Data Source": {
+      "advanced": true
+     },
+     "Notes": {
+      "advanced": true
+     },
+     "Property": {
+      "advanced": true
+     },
+     "Reference Point Name": {
+      "advanced": true
+     },
+     "Remote Writable": {
+      "advanced": true
+     },
+     "Unit Details": {
+      "advanced": true
+     },
+     "Units": {
+      "advanced": true
+     },
+     "Volttron Point Name": {
+      "advanced": false
+     },
+     "Writable": {
+      "advanced": true
+     },
+     "Write Priority": {
+      "advanced": true
+     },
+     "active": {
+      "advanced": true
+     },
+     "array_index": {
+      "advanced": true
+     },
+     "cov_increment": {
+      "advanced": true
+     },
+     "default_value": {
+      "advanced": true
+     },
+     "instance": {
+      "advanced": false
+     },
+     "interval": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "number_of_states": {
+      "advanced": true
+     },
+     "object_name": {
+      "advanced": true
+     },
+     "object_type": {
+      "advanced": false
+     },
+     "polling_group": {
+      "advanced": true
+     },
+     "publish_breadth_first_all": {
+      "advanced": true
+     },
+     "publish_breadth_first_multi": {
+      "advanced": true
+     },
+     "publish_breadth_first_single": {
+      "advanced": true
+     },
+     "publish_depth_first_all": {
+      "advanced": true
+     },
+     "publish_depth_first_multi": {
+      "advanced": true
+     },
+     "publish_depth_first_single": {
+      "advanced": true
+     },
+     "reservation_required_for_write": {
+      "advanced": true
+     },
+     "stale_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "stale_timeout_multiplier": {
+      "advanced": true
+     },
+     "strict_all_publishes": {
+      "advanced": true
+     }
+    }
+   },
+   "remote": {
+    "$defs": {
+     "DriverRole": {
+      "description": "Which side of BACnet this remote is. ``master``/``outstation``/``slave`` are accepted spellings as well.",
+      "enum": [
+       "client",
+       "server"
+      ],
+      "title": "DriverRole",
+      "type": "string"
+     }
+    },
+    "additionalProperties": true,
+    "properties": {
+     "apdu_retries": {
+      "default": 3,
+      "minimum": 0,
+      "title": "Apdu Retries",
+      "type": "integer"
+     },
+     "apdu_timeout": {
+      "default": 3.0,
+      "exclusiveMinimum": 0,
+      "title": "Apdu Timeout",
+      "type": "number"
+     },
+     "bacnet_port": {
+      "default": 0,
+      "title": "Bacnet Port",
+      "type": "integer"
+     },
+     "cov_lifetime": {
+      "default": 180.0,
+      "title": "Cov Lifetime",
+      "type": "number"
+     },
+     "debug": {
+      "default": false,
+      "title": "Debug",
+      "type": "boolean"
+     },
+     "device_address": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Device Address"
+     },
+     "device_id": {
+      "minimum": 0,
+      "title": "Device Id",
+      "type": "integer"
+     },
+     "driver_role": {
+      "$ref": "#/$defs/DriverRole",
+      "default": "client"
+     },
+     "driver_type": {
+      "title": "Driver Type",
+      "type": "string"
+     },
+     "heart_beat_point": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Heart Beat Point"
+     },
+     "local_interface": {
+      "default": "0.0.0.0/32",
+      "format": "ipvanyinterface",
+      "title": "Local Interface",
+      "type": "string"
+     },
+     "max_per_request": {
+      "default": 24,
+      "minimum": 0,
+      "title": "Max Per Request",
+      "type": "integer"
+     },
+     "min_priority": {
+      "default": 8,
+      "maximum": 16,
+      "minimum": 1,
+      "title": "Min Priority",
+      "type": "integer"
+     },
+     "module": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Module"
+     },
+     "object_name": {
+      "default": "VOLTTRON served device",
+      "title": "Object Name",
+      "type": "string"
+     },
+     "persistent_connection": {
+      "default": true,
+      "description": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message.",
+      "title": "Persistent Connection",
+      "type": "boolean"
+     },
+     "ping_retry_interval": {
+      "default": 5.0,
+      "title": "Ping Retry Interval",
+      "type": "number"
+     },
+     "plugins": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Plugins",
+      "type": "array"
+     },
+     "registration_timeout": {
+      "default": 30.0,
+      "exclusiveMinimum": 0,
+      "title": "Registration Timeout",
+      "type": "number"
+     },
+     "served_port": {
+      "anyOf": [
+       {
+        "minimum": 0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Served Port"
+     },
+     "time_synchronization_interval": {
+      "anyOf": [
+       {
+        "minimum": 0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Time Synchronization Interval"
+     },
+     "timeout": {
+      "anyOf": [
+       {
+        "minimum": 0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Timeout"
+     },
+     "use_read_multiple": {
+      "default": true,
+      "title": "Use Read Multiple",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "driver_type",
+     "device_id"
+    ],
+    "title": "BacnetRemoteConfig",
+    "type": "object",
+    "x-hints": {
+     "apdu_retries": {
+      "advanced": true
+     },
+     "apdu_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "bacnet_port": {
+      "advanced": true
+     },
+     "cov_lifetime": {
+      "advanced": true
+     },
+     "debug": {
+      "advanced": true
+     },
+     "device_address": {
+      "advanced": true
+     },
+     "device_id": {
+      "advanced": false
+     },
+     "driver_role": {
+      "advanced": true
+     },
+     "driver_type": {
+      "advanced": false
+     },
+     "heart_beat_point": {
+      "advanced": true
+     },
+     "local_interface": {
+      "advanced": true
+     },
+     "max_per_request": {
+      "advanced": true
+     },
+     "min_priority": {
+      "advanced": true
+     },
+     "module": {
+      "advanced": true
+     },
+     "object_name": {
+      "advanced": true
+     },
+     "persistent_connection": {
+      "advanced": true,
+      "tooltip": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message."
+     },
+     "ping_retry_interval": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "plugins": {
+      "advanced": true
+     },
+     "registration_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "served_port": {
+      "advanced": true
+     },
+     "time_synchronization_interval": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "use_read_multiple": {
+      "advanced": true
+     }
+    }
+   },
+   "roles": [
+    "client",
+    "server"
+   ]
+  },
+  "dnp3": {
+   "point": {
+    "$defs": {
+     "ControlCode": {
+      "description": "The control relay output block a binary output receives: latch on/off, or pulse on/off with timing.",
+      "enum": [
+       "latch",
+       "pulse"
+      ],
+      "title": "ControlCode",
+      "type": "string"
+     },
+     "ControlMode": {
+      "description": "How an output is operated: DIRECT_OPERATE in one step, or SELECT then OPERATE (sbo).",
+      "enum": [
+       "direct",
+       "sbo"
+      ],
+      "title": "ControlMode",
+      "type": "string"
+     },
+     "DataSource": {
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "enum": [
+       "short_poll",
+       "long_poll",
+       "poll_once",
+       "static",
+       "never_poll",
+       "server"
+      ],
+      "title": "DataSource",
+      "type": "string"
+     }
+    },
+    "description": "One registry row. Column headers as the discovery tooling writes them are accepted alongside snake_case.",
+    "properties": {
+     "Data Source": {
+      "$ref": "#/$defs/DataSource",
+      "default": "short_poll"
+     },
+     "Notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+     },
+     "Reference Point Name": {
+      "default": "",
+      "title": "Reference Point Name",
+      "type": "string"
+     },
+     "Remote Writable": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Remote Writable"
+     },
+     "Unit Details": {
+      "default": "",
+      "title": "Unit Details",
+      "type": "string"
+     },
+     "Units": {
+      "default": "",
+      "title": "Units",
+      "type": "string"
+     },
+     "Volttron Point Name": {
+      "title": "Volttron Point Name",
+      "type": "string"
+     },
+     "Writable": {
+      "default": false,
+      "title": "Writable",
+      "type": "boolean"
+     },
+     "active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Active"
+     },
+     "control_code": {
+      "$ref": "#/$defs/ControlCode",
+      "default": "latch"
+     },
+     "control_mode": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/ControlMode"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "count": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Count",
+      "type": "integer"
+     },
+     "default_value": {
+      "default": null,
+      "title": "Default Value"
+     },
+     "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+     },
+     "event_class": {
+      "anyOf": [
+       {
+        "maximum": 3,
+        "minimum": 0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Event Class"
+     },
+     "index": {
+      "title": "Index",
+      "type": "integer"
+     },
+     "interval": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Interval"
+     },
+     "object_group": {
+      "title": "Object Group",
+      "type": "integer"
+     },
+     "off_time": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Off Time",
+      "type": "integer"
+     },
+     "on_time": {
+      "default": 0,
+      "minimum": 0,
+      "title": "On Time",
+      "type": "integer"
+     },
+     "point_name": {
+      "default": "",
+      "title": "Point Name",
+      "type": "string"
+     },
+     "polling_group": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Polling Group"
+     },
+     "publish_breadth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First All"
+     },
+     "publish_breadth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Multi"
+     },
+     "publish_breadth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Single"
+     },
+     "publish_depth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First All"
+     },
+     "publish_depth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Multi"
+     },
+     "publish_depth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Single"
+     },
+     "reservation_required_for_write": {
+      "default": false,
+      "title": "Reservation Required For Write",
+      "type": "boolean"
+     },
+     "scaling": {
+      "default": 1.0,
+      "title": "Scaling",
+      "type": "number"
+     },
+     "stale_timeout": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Stale Timeout"
+     },
+     "stale_timeout_multiplier": {
+      "default": null,
+      "title": "Stale Timeout Multiplier",
+      "type": "number"
+     },
+     "strict_all_publishes": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Strict All Publishes"
+     },
+     "transform": {
+      "default": "",
+      "title": "Transform",
+      "type": "string"
+     },
+     "variation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Variation"
+     }
+    },
+    "required": [
+     "Volttron Point Name",
+     "object_group",
+     "index"
+    ],
+    "title": "Dnp3PointConfig",
+    "type": "object",
+    "x-hints": {
+     "Data Source": {
+      "advanced": true
+     },
+     "Notes": {
+      "advanced": true
+     },
+     "Reference Point Name": {
+      "advanced": true
+     },
+     "Remote Writable": {
+      "advanced": true
+     },
+     "Unit Details": {
+      "advanced": true
+     },
+     "Units": {
+      "advanced": true
+     },
+     "Volttron Point Name": {
+      "advanced": false
+     },
+     "Writable": {
+      "advanced": true
+     },
+     "active": {
+      "advanced": true
+     },
+     "control_code": {
+      "advanced": true
+     },
+     "control_mode": {
+      "advanced": true
+     },
+     "count": {
+      "advanced": true
+     },
+     "default_value": {
+      "advanced": true
+     },
+     "description": {
+      "advanced": true
+     },
+     "event_class": {
+      "advanced": true
+     },
+     "index": {
+      "advanced": false
+     },
+     "interval": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "object_group": {
+      "advanced": false
+     },
+     "off_time": {
+      "advanced": true
+     },
+     "on_time": {
+      "advanced": true
+     },
+     "point_name": {
+      "advanced": true
+     },
+     "polling_group": {
+      "advanced": true
+     },
+     "publish_breadth_first_all": {
+      "advanced": true
+     },
+     "publish_breadth_first_multi": {
+      "advanced": true
+     },
+     "publish_breadth_first_single": {
+      "advanced": true
+     },
+     "publish_depth_first_all": {
+      "advanced": true
+     },
+     "publish_depth_first_multi": {
+      "advanced": true
+     },
+     "publish_depth_first_single": {
+      "advanced": true
+     },
+     "reservation_required_for_write": {
+      "advanced": true
+     },
+     "scaling": {
+      "advanced": true
+     },
+     "stale_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "stale_timeout_multiplier": {
+      "advanced": true
+     },
+     "strict_all_publishes": {
+      "advanced": true
+     },
+     "transform": {
+      "advanced": true
+     },
+     "variation": {
+      "advanced": true
+     }
+    }
+   },
+   "remote": {
+    "$defs": {
+     "ControlMode": {
+      "description": "How an output is operated: DIRECT_OPERATE in one step, or SELECT then OPERATE (sbo).",
+      "enum": [
+       "direct",
+       "sbo"
+      ],
+      "title": "ControlMode",
+      "type": "string"
+     },
+     "DriverRole": {
+      "description": "Which side of DNP3 this remote is. ``client`` and ``server`` are accepted for the two.",
+      "enum": [
+       "master",
+       "outstation"
+      ],
+      "title": "DriverRole",
+      "type": "string"
+     },
+     "ReadMode": {
+      "description": "What a scheduled poll asks the outstation for.",
+      "enum": [
+       "class",
+       "integrity",
+       "points"
+      ],
+      "title": "ReadMode",
+      "type": "string"
+     }
+    },
+    "additionalProperties": true,
+    "description": "One remote: the outstation to reach (role ``master``) or the outstation to serve (role ``outstation``). Keys from\nthe previous driver (`master_ip`, `outstation_ip`, `master_id`, `outstation_id`) are accepted, so existing device\nconfigurations keep working.",
+    "properties": {
+     "bind_host": {
+      "default": "0.0.0.0",
+      "title": "Bind Host",
+      "type": "string"
+     },
+     "control_mode": {
+      "$ref": "#/$defs/ControlMode",
+      "default": "direct"
+     },
+     "debug": {
+      "default": false,
+      "title": "Debug",
+      "type": "boolean"
+     },
+     "driver_role": {
+      "$ref": "#/$defs/DriverRole",
+      "default": "master"
+     },
+     "driver_type": {
+      "title": "Driver Type",
+      "type": "string"
+     },
+     "heart_beat_point": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Heart Beat Point"
+     },
+     "integrity_poll_interval": {
+      "default": 3600.0,
+      "minimum": 0,
+      "title": "Integrity Poll Interval",
+      "type": "number"
+     },
+     "link_reset": {
+      "default": true,
+      "title": "Link Reset",
+      "type": "boolean"
+     },
+     "master_id": {
+      "default": 2,
+      "title": "Master Id",
+      "type": "integer"
+     },
+     "master_ip": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Master Ip"
+     },
+     "module": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Module"
+     },
+     "outstation_id": {
+      "default": 1,
+      "title": "Outstation Id",
+      "type": "integer"
+     },
+     "outstation_ip": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Outstation Ip"
+     },
+     "persistent_connection": {
+      "default": true,
+      "description": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message.",
+      "title": "Persistent Connection",
+      "type": "boolean"
+     },
+     "plugins": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Plugins",
+      "type": "array"
+     },
+     "poll_classes": {
+      "default": [
+       0
+      ],
+      "items": {
+       "type": "integer"
+      },
+      "title": "Poll Classes",
+      "type": "array"
+     },
+     "port": {
+      "default": 20000,
+      "title": "Port",
+      "type": "integer"
+     },
+     "proxy_group": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Proxy Group"
+     },
+     "read_mode": {
+      "$ref": "#/$defs/ReadMode",
+      "default": "class"
+     },
+     "registration_timeout": {
+      "default": 30.0,
+      "exclusiveMinimum": 0,
+      "title": "Registration Timeout",
+      "type": "number"
+     },
+     "reply_timeout": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Reply Timeout"
+     },
+     "response_timeout": {
+      "default": 5.0,
+      "exclusiveMinimum": 0,
+      "title": "Response Timeout",
+      "type": "number"
+     },
+     "unsolicited": {
+      "default": false,
+      "title": "Unsolicited",
+      "type": "boolean"
+     },
+     "unsolicited_classes": {
+      "default": [
+       1,
+       2,
+       3
+      ],
+      "items": {
+       "type": "integer"
+      },
+      "title": "Unsolicited Classes",
+      "type": "array"
+     }
+    },
+    "required": [
+     "driver_type"
+    ],
+    "title": "Dnp3RemoteConfig",
+    "type": "object",
+    "x-hints": {
+     "bind_host": {
+      "advanced": true
+     },
+     "control_mode": {
+      "advanced": true
+     },
+     "debug": {
+      "advanced": true
+     },
+     "driver_role": {
+      "advanced": true
+     },
+     "driver_type": {
+      "advanced": false
+     },
+     "heart_beat_point": {
+      "advanced": true
+     },
+     "integrity_poll_interval": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "link_reset": {
+      "advanced": true
+     },
+     "master_id": {
+      "advanced": true
+     },
+     "master_ip": {
+      "advanced": true
+     },
+     "module": {
+      "advanced": true
+     },
+     "outstation_id": {
+      "advanced": true
+     },
+     "outstation_ip": {
+      "advanced": true
+     },
+     "persistent_connection": {
+      "advanced": true,
+      "tooltip": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message."
+     },
+     "plugins": {
+      "advanced": true
+     },
+     "poll_classes": {
+      "advanced": true
+     },
+     "port": {
+      "advanced": true
+     },
+     "proxy_group": {
+      "advanced": true
+     },
+     "read_mode": {
+      "advanced": true
+     },
+     "registration_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "reply_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "response_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "unsolicited": {
+      "advanced": true
+     },
+     "unsolicited_classes": {
+      "advanced": true
+     }
+    }
+   },
+   "roles": [
+    "master",
+    "outstation"
+   ]
+  },
+  "fake": {
+   "point": {
+    "$defs": {
+     "DataSource": {
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "enum": [
+       "short_poll",
+       "long_poll",
+       "poll_once",
+       "static",
+       "never_poll",
+       "server"
+      ],
+      "title": "DataSource",
+      "type": "string"
+     }
+    },
+    "properties": {
+     "Data Source": {
+      "$ref": "#/$defs/DataSource",
+      "default": "short_poll"
+     },
+     "Notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+     },
+     "Reference Point Name": {
+      "default": "",
+      "title": "Reference Point Name",
+      "type": "string"
+     },
+     "Remote Writable": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Remote Writable"
+     },
+     "Starting Value": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "number"
+       },
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": "sin",
+      "title": "Starting Value"
+     },
+     "Type": {
+      "default": "string",
+      "title": "Type",
+      "type": "string"
+     },
+     "Unit Details": {
+      "default": "",
+      "title": "Unit Details",
+      "type": "string"
+     },
+     "Units": {
+      "default": "",
+      "title": "Units",
+      "type": "string"
+     },
+     "Volttron Point Name": {
+      "title": "Volttron Point Name",
+      "type": "string"
+     },
+     "Writable": {
+      "default": false,
+      "title": "Writable",
+      "type": "boolean"
+     },
+     "active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Active"
+     },
+     "interval": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Interval"
+     },
+     "polling_group": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Polling Group"
+     },
+     "publish_breadth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First All"
+     },
+     "publish_breadth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Multi"
+     },
+     "publish_breadth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Single"
+     },
+     "publish_depth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First All"
+     },
+     "publish_depth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Multi"
+     },
+     "publish_depth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Single"
+     },
+     "reservation_required_for_write": {
+      "default": false,
+      "title": "Reservation Required For Write",
+      "type": "boolean"
+     },
+     "stale_timeout": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Stale Timeout"
+     },
+     "stale_timeout_multiplier": {
+      "default": null,
+      "title": "Stale Timeout Multiplier",
+      "type": "number"
+     },
+     "strict_all_publishes": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Strict All Publishes"
+     }
+    },
+    "required": [
+     "Volttron Point Name"
+    ],
+    "title": "FakePointConfig",
+    "type": "object",
+    "x-hints": {
+     "Data Source": {
+      "advanced": true
+     },
+     "Notes": {
+      "advanced": true
+     },
+     "Reference Point Name": {
+      "advanced": true
+     },
+     "Remote Writable": {
+      "advanced": true
+     },
+     "Starting Value": {
+      "advanced": true
+     },
+     "Type": {
+      "advanced": true
+     },
+     "Unit Details": {
+      "advanced": true
+     },
+     "Units": {
+      "advanced": true
+     },
+     "Volttron Point Name": {
+      "advanced": false
+     },
+     "Writable": {
+      "advanced": true
+     },
+     "active": {
+      "advanced": true
+     },
+     "interval": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "polling_group": {
+      "advanced": true
+     },
+     "publish_breadth_first_all": {
+      "advanced": true
+     },
+     "publish_breadth_first_multi": {
+      "advanced": true
+     },
+     "publish_breadth_first_single": {
+      "advanced": true
+     },
+     "publish_depth_first_all": {
+      "advanced": true
+     },
+     "publish_depth_first_multi": {
+      "advanced": true
+     },
+     "publish_depth_first_single": {
+      "advanced": true
+     },
+     "reservation_required_for_write": {
+      "advanced": true
+     },
+     "stale_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "stale_timeout_multiplier": {
+      "advanced": true
+     },
+     "strict_all_publishes": {
+      "advanced": true
+     }
+    }
+   },
+   "remote": {
+    "additionalProperties": true,
+    "properties": {
+     "debug": {
+      "default": false,
+      "title": "Debug",
+      "type": "boolean"
+     },
+     "driver_role": {
+      "default": "client",
+      "title": "Driver Role",
+      "type": "string"
+     },
+     "driver_type": {
+      "title": "Driver Type",
+      "type": "string"
+     },
+     "heart_beat_point": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Heart Beat Point"
+     },
+     "module": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Module"
+     },
+     "plugins": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Plugins",
+      "type": "array"
+     },
+     "remote_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Remote Id"
+     }
+    },
+    "required": [
+     "driver_type"
+    ],
+    "title": "FakeRemoteConfig",
+    "type": "object",
+    "x-hints": {
+     "debug": {
+      "advanced": true
+     },
+     "driver_role": {
+      "advanced": true
+     },
+     "driver_type": {
+      "advanced": false
+     },
+     "heart_beat_point": {
+      "advanced": true
+     },
+     "module": {
+      "advanced": true
+     },
+     "plugins": {
+      "advanced": true
+     },
+     "remote_id": {
+      "advanced": true
+     }
+    }
+   },
+   "roles": [
+    "client"
+   ]
+  },
+  "ieee2030_5": {
+   "point": {
+    "$defs": {
+     "DataSource": {
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "enum": [
+       "short_poll",
+       "long_poll",
+       "poll_once",
+       "static",
+       "never_poll",
+       "server"
+      ],
+      "title": "DataSource",
+      "type": "string"
+     }
+    },
+    "description": "One registry row: a 2030.5 attribute of the device's resources, in the interoperability convention.\n\nColumn headers as the discovery tooling writes them (and the legacy agent's ``Parameter Type``) are accepted\nalongside snake_case. In the client role rows under the upward resources are writable by default and rows under the\ncontrols are not; a served row (``data_source: server``) is the mirror image: the platform writes the controls and\nthe DER client reports the upward resources (``remote_writable``).",
+    "properties": {
+     "Data Source": {
+      "$ref": "#/$defs/DataSource",
+      "default": "short_poll"
+     },
+     "Notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+     },
+     "Reference Point Name": {
+      "default": "",
+      "title": "Reference Point Name",
+      "type": "string"
+     },
+     "Remote Writable": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Remote Writable"
+     },
+     "Unit Details": {
+      "default": "",
+      "title": "Unit Details",
+      "type": "string"
+     },
+     "Units": {
+      "default": "",
+      "title": "Units",
+      "type": "string"
+     },
+     "Volttron Point Name": {
+      "title": "Volttron Point Name",
+      "type": "string"
+     },
+     "Writable": {
+      "default": false,
+      "title": "Writable",
+      "type": "boolean"
+     },
+     "accumulation_behaviour": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Accumulation Behaviour"
+     },
+     "active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Active"
+     },
+     "commodity": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Commodity"
+     },
+     "data_qualifier": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Data Qualifier"
+     },
+     "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+     },
+     "flow_direction": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Flow Direction"
+     },
+     "interval": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Interval"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Kind"
+     },
+     "mrid": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Mrid"
+     },
+     "multiplier": {
+      "default": 0,
+      "title": "Multiplier",
+      "type": "integer"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     },
+     "phase": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Phase"
+     },
+     "polling_group": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Polling Group"
+     },
+     "power_of_ten_multiplier": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Power Of Ten Multiplier"
+     },
+     "publish_breadth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First All"
+     },
+     "publish_breadth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Multi"
+     },
+     "publish_breadth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Single"
+     },
+     "publish_depth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First All"
+     },
+     "publish_depth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Multi"
+     },
+     "publish_depth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Single"
+     },
+     "reservation_required_for_write": {
+      "default": false,
+      "title": "Reservation Required For Write",
+      "type": "boolean"
+     },
+     "scaling": {
+      "default": 1.0,
+      "title": "Scaling",
+      "type": "number"
+     },
+     "stale_timeout": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Stale Timeout"
+     },
+     "stale_timeout_multiplier": {
+      "default": null,
+      "title": "Stale Timeout Multiplier",
+      "type": "number"
+     },
+     "starting_value": {
+      "default": null,
+      "title": "Starting Value"
+     },
+     "strict_all_publishes": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Strict All Publishes"
+     },
+     "transform": {
+      "default": "",
+      "title": "Transform",
+      "type": "string"
+     },
+     "uom": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Uom"
+     }
+    },
+    "required": [
+     "Volttron Point Name",
+     "path"
+    ],
+    "title": "Ieee2030_5PointConfig",
+    "type": "object",
+    "x-hints": {
+     "Data Source": {
+      "advanced": true
+     },
+     "Notes": {
+      "advanced": true
+     },
+     "Reference Point Name": {
+      "advanced": true
+     },
+     "Remote Writable": {
+      "advanced": true
+     },
+     "Unit Details": {
+      "advanced": true
+     },
+     "Units": {
+      "advanced": true
+     },
+     "Volttron Point Name": {
+      "advanced": false
+     },
+     "Writable": {
+      "advanced": true
+     },
+     "accumulation_behaviour": {
+      "advanced": true
+     },
+     "active": {
+      "advanced": true
+     },
+     "commodity": {
+      "advanced": true
+     },
+     "data_qualifier": {
+      "advanced": true
+     },
+     "description": {
+      "advanced": true
+     },
+     "flow_direction": {
+      "advanced": true
+     },
+     "interval": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "kind": {
+      "advanced": true
+     },
+     "mrid": {
+      "advanced": true
+     },
+     "multiplier": {
+      "advanced": true
+     },
+     "path": {
+      "advanced": false
+     },
+     "phase": {
+      "advanced": true
+     },
+     "polling_group": {
+      "advanced": true
+     },
+     "power_of_ten_multiplier": {
+      "advanced": true
+     },
+     "publish_breadth_first_all": {
+      "advanced": true
+     },
+     "publish_breadth_first_multi": {
+      "advanced": true
+     },
+     "publish_breadth_first_single": {
+      "advanced": true
+     },
+     "publish_depth_first_all": {
+      "advanced": true
+     },
+     "publish_depth_first_multi": {
+      "advanced": true
+     },
+     "publish_depth_first_single": {
+      "advanced": true
+     },
+     "reservation_required_for_write": {
+      "advanced": true
+     },
+     "scaling": {
+      "advanced": true
+     },
+     "stale_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "stale_timeout_multiplier": {
+      "advanced": true
+     },
+     "starting_value": {
+      "advanced": true
+     },
+     "strict_all_publishes": {
+      "advanced": true
+     },
+     "transform": {
+      "advanced": true
+     },
+     "uom": {
+      "advanced": true
+     }
+    }
+   },
+   "remote": {
+    "$defs": {
+     "DriverRole": {
+      "description": "Which side of 2030.5 this remote is. ``master``/``outstation`` are accepted for the two as well.",
+      "enum": [
+       "client",
+       "server"
+      ],
+      "title": "DriverRole",
+      "type": "string"
+     }
+    },
+    "additionalProperties": true,
+    "description": "One remote: the 2030.5 server to reach with the client certificate that identifies this device to it (role\n``client``), or the server to serve with its server certificate (role ``server``).",
+    "properties": {
+     "bind_host": {
+      "default": "0.0.0.0",
+      "title": "Bind Host",
+      "type": "string"
+     },
+     "ca_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Ca Path"
+     },
+     "cert_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Cert Path"
+     },
+     "ciphers": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Ciphers",
+      "type": "array"
+     },
+     "client_auth": {
+      "default": true,
+      "title": "Client Auth",
+      "type": "boolean"
+     },
+     "client_lfdi": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Client Lfdi"
+     },
+     "client_pin": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Client Pin"
+     },
+     "dcap_path": {
+      "default": "/dcap",
+      "title": "Dcap Path",
+      "type": "string"
+     },
+     "debug": {
+      "default": false,
+      "title": "Debug",
+      "type": "boolean"
+     },
+     "default_poll_rate": {
+      "default": 1800.0,
+      "exclusiveMinimum": 0,
+      "title": "Default Poll Rate",
+      "type": "number"
+     },
+     "der_index": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Der Index",
+      "type": "integer"
+     },
+     "description": {
+      "default": "VOLTTRON",
+      "title": "Description",
+      "type": "string"
+     },
+     "device_category": {
+      "default": 4194304,
+      "title": "Device Category",
+      "type": "integer"
+     },
+     "driver_role": {
+      "$ref": "#/$defs/DriverRole",
+      "default": "client"
+     },
+     "driver_type": {
+      "title": "Driver Type",
+      "type": "string"
+     },
+     "heart_beat_point": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Heart Beat Point"
+     },
+     "immediate_control_duration": {
+      "default": 3600,
+      "minimum": 1,
+      "title": "Immediate Control Duration",
+      "type": "integer"
+     },
+     "key_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Key Path"
+     },
+     "lfdi": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Lfdi"
+     },
+     "module": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Module"
+     },
+     "notify_bind_host": {
+      "default": "0.0.0.0",
+      "title": "Notify Bind Host",
+      "type": "string"
+     },
+     "notify_cert_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Notify Cert Path"
+     },
+     "notify_client_auth": {
+      "default": false,
+      "title": "Notify Client Auth",
+      "type": "boolean"
+     },
+     "notify_host": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Notify Host"
+     },
+     "notify_key_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Notify Key Path"
+     },
+     "notify_port": {
+      "default": 8443,
+      "minimum": 0,
+      "title": "Notify Port",
+      "type": "integer"
+     },
+     "notify_tls_verify": {
+      "default": false,
+      "title": "Notify Tls Verify",
+      "type": "boolean"
+     },
+     "persistent_connection": {
+      "default": true,
+      "description": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message.",
+      "title": "Persistent Connection",
+      "type": "boolean"
+     },
+     "pin": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Pin"
+     },
+     "plugins": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Plugins",
+      "type": "array"
+     },
+     "poll_rate": {
+      "default": 60,
+      "minimum": 1,
+      "title": "Poll Rate",
+      "type": "integer"
+     },
+     "poll_rate_ceiling": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Poll Rate Ceiling"
+     },
+     "poll_rate_floor": {
+      "default": 60.0,
+      "minimum": 0,
+      "title": "Poll Rate Floor",
+      "type": "number"
+     },
+     "port": {
+      "default": 7443,
+      "minimum": 0,
+      "title": "Port",
+      "type": "integer"
+     },
+     "primacy": {
+      "default": 1,
+      "minimum": 0,
+      "title": "Primacy",
+      "type": "integer"
+     },
+     "proxy_group": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Proxy Group"
+     },
+     "register_if_missing": {
+      "default": true,
+      "title": "Register If Missing",
+      "type": "boolean"
+     },
+     "register_unknown_clients": {
+      "default": true,
+      "title": "Register Unknown Clients",
+      "type": "boolean"
+     },
+     "registration_timeout": {
+      "default": 30.0,
+      "exclusiveMinimum": 0,
+      "title": "Registration Timeout",
+      "type": "number"
+     },
+     "reply_timeout": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Reply Timeout"
+     },
+     "response_timeout": {
+      "default": 10.0,
+      "exclusiveMinimum": 0,
+      "title": "Response Timeout",
+      "type": "number"
+     },
+     "server_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Server Url"
+     },
+     "state_dir": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "State Dir"
+     },
+     "subscribe": {
+      "default": true,
+      "title": "Subscribe",
+      "type": "boolean"
+     },
+     "tls": {
+      "default": true,
+      "title": "Tls",
+      "type": "boolean"
+     },
+     "tls12_only": {
+      "default": true,
+      "title": "Tls12 Only",
+      "type": "boolean"
+     },
+     "tls_verify": {
+      "default": true,
+      "title": "Tls Verify",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "driver_type"
+    ],
+    "title": "Ieee2030_5RemoteConfig",
+    "type": "object",
+    "x-hints": {
+     "bind_host": {
+      "advanced": true
+     },
+     "ca_path": {
+      "advanced": true
+     },
+     "cert_path": {
+      "advanced": true
+     },
+     "ciphers": {
+      "advanced": true
+     },
+     "client_auth": {
+      "advanced": true
+     },
+     "client_lfdi": {
+      "advanced": true
+     },
+     "client_pin": {
+      "advanced": true
+     },
+     "dcap_path": {
+      "advanced": true
+     },
+     "debug": {
+      "advanced": true
+     },
+     "default_poll_rate": {
+      "advanced": true
+     },
+     "der_index": {
+      "advanced": true
+     },
+     "description": {
+      "advanced": true
+     },
+     "device_category": {
+      "advanced": true
+     },
+     "driver_role": {
+      "advanced": true
+     },
+     "driver_type": {
+      "advanced": false
+     },
+     "heart_beat_point": {
+      "advanced": true
+     },
+     "immediate_control_duration": {
+      "advanced": true
+     },
+     "key_path": {
+      "advanced": true
+     },
+     "lfdi": {
+      "advanced": true
+     },
+     "module": {
+      "advanced": true
+     },
+     "notify_bind_host": {
+      "advanced": true
+     },
+     "notify_cert_path": {
+      "advanced": true
+     },
+     "notify_client_auth": {
+      "advanced": true
+     },
+     "notify_host": {
+      "advanced": true
+     },
+     "notify_key_path": {
+      "advanced": true
+     },
+     "notify_port": {
+      "advanced": true
+     },
+     "notify_tls_verify": {
+      "advanced": true
+     },
+     "persistent_connection": {
+      "advanced": true,
+      "tooltip": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message."
+     },
+     "pin": {
+      "advanced": true
+     },
+     "plugins": {
+      "advanced": true
+     },
+     "poll_rate": {
+      "advanced": true
+     },
+     "poll_rate_ceiling": {
+      "advanced": true
+     },
+     "poll_rate_floor": {
+      "advanced": true
+     },
+     "port": {
+      "advanced": true
+     },
+     "primacy": {
+      "advanced": true
+     },
+     "proxy_group": {
+      "advanced": true
+     },
+     "register_if_missing": {
+      "advanced": true
+     },
+     "register_unknown_clients": {
+      "advanced": true
+     },
+     "registration_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "reply_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "response_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "server_url": {
+      "advanced": true
+     },
+     "state_dir": {
+      "advanced": true
+     },
+     "subscribe": {
+      "advanced": true
+     },
+     "tls": {
+      "advanced": true
+     },
+     "tls12_only": {
+      "advanced": true
+     },
+     "tls_verify": {
+      "advanced": true
+     }
+    }
+   },
+   "roles": [
+    "client",
+    "server"
+   ]
+  },
+  "modbus": {
+   "point": {
+    "$defs": {
+     "DataSource": {
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "enum": [
+       "short_poll",
+       "long_poll",
+       "poll_once",
+       "static",
+       "never_poll",
+       "server"
+      ],
+      "title": "DataSource",
+      "type": "string"
+     },
+     "Table": {
+      "description": "The four Modbus data tables, named as the Modbus Protocol Proxy knows them.",
+      "enum": [
+       "coil",
+       "discrete_input",
+       "holding",
+       "input"
+      ],
+      "title": "Table",
+      "type": "string"
+     },
+     "WordOrder": {
+      "enum": [
+       "big",
+       "little"
+      ],
+      "title": "WordOrder",
+      "type": "string"
+     }
+    },
+    "properties": {
+     "Data Source": {
+      "$ref": "#/$defs/DataSource",
+      "default": "short_poll"
+     },
+     "Notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+     },
+     "Reference Point Name": {
+      "default": "",
+      "title": "Reference Point Name",
+      "type": "string"
+     },
+     "Remote Writable": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Remote Writable"
+     },
+     "Unit Details": {
+      "default": "",
+      "title": "Unit Details",
+      "type": "string"
+     },
+     "Units": {
+      "default": "",
+      "title": "Units",
+      "type": "string"
+     },
+     "Volttron Point Name": {
+      "title": "Volttron Point Name",
+      "type": "string"
+     },
+     "Writable": {
+      "default": false,
+      "title": "Writable",
+      "type": "boolean"
+     },
+     "active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Active"
+     },
+     "address": {
+      "title": "Address",
+      "type": "integer"
+     },
+     "count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Count"
+     },
+     "data_type": {
+      "title": "Data Type",
+      "type": "string"
+     },
+     "default_value": {
+      "default": null,
+      "title": "Default Value"
+     },
+     "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+     },
+     "interval": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Interval"
+     },
+     "mixed_endian": {
+      "default": false,
+      "title": "Mixed Endian",
+      "type": "boolean"
+     },
+     "polling_group": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Polling Group"
+     },
+     "publish_breadth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First All"
+     },
+     "publish_breadth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Multi"
+     },
+     "publish_breadth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Breadth First Single"
+     },
+     "publish_depth_first_all": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First All"
+     },
+     "publish_depth_first_multi": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Multi"
+     },
+     "publish_depth_first_single": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Publish Depth First Single"
+     },
+     "register_name": {
+      "default": "",
+      "title": "Register Name",
+      "type": "string"
+     },
+     "reservation_required_for_write": {
+      "default": false,
+      "title": "Reservation Required For Write",
+      "type": "boolean"
+     },
+     "stale_timeout": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Stale Timeout"
+     },
+     "stale_timeout_multiplier": {
+      "default": null,
+      "title": "Stale Timeout Multiplier",
+      "type": "number"
+     },
+     "strict_all_publishes": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Strict All Publishes"
+     },
+     "string_encoding": {
+      "default": "utf-8",
+      "title": "String Encoding",
+      "type": "string"
+     },
+     "table": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/Table"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "transform": {
+      "default": "",
+      "title": "Transform",
+      "type": "string"
+     },
+     "word_order": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/WordOrder"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     }
+    },
+    "required": [
+     "Volttron Point Name",
+     "address",
+     "data_type"
+    ],
+    "title": "ModbusPointConfig",
+    "type": "object",
+    "x-hints": {
+     "Data Source": {
+      "advanced": true
+     },
+     "Notes": {
+      "advanced": true
+     },
+     "Reference Point Name": {
+      "advanced": true
+     },
+     "Remote Writable": {
+      "advanced": true
+     },
+     "Unit Details": {
+      "advanced": true
+     },
+     "Units": {
+      "advanced": true
+     },
+     "Volttron Point Name": {
+      "advanced": false
+     },
+     "Writable": {
+      "advanced": true
+     },
+     "active": {
+      "advanced": true
+     },
+     "address": {
+      "advanced": false
+     },
+     "count": {
+      "advanced": true
+     },
+     "data_type": {
+      "advanced": false
+     },
+     "default_value": {
+      "advanced": true
+     },
+     "description": {
+      "advanced": true
+     },
+     "interval": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "mixed_endian": {
+      "advanced": true
+     },
+     "polling_group": {
+      "advanced": true
+     },
+     "publish_breadth_first_all": {
+      "advanced": true
+     },
+     "publish_breadth_first_multi": {
+      "advanced": true
+     },
+     "publish_breadth_first_single": {
+      "advanced": true
+     },
+     "publish_depth_first_all": {
+      "advanced": true
+     },
+     "publish_depth_first_multi": {
+      "advanced": true
+     },
+     "publish_depth_first_single": {
+      "advanced": true
+     },
+     "register_name": {
+      "advanced": true
+     },
+     "reservation_required_for_write": {
+      "advanced": true
+     },
+     "stale_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "stale_timeout_multiplier": {
+      "advanced": true
+     },
+     "strict_all_publishes": {
+      "advanced": true
+     },
+     "string_encoding": {
+      "advanced": true
+     },
+     "table": {
+      "advanced": true
+     },
+     "transform": {
+      "advanced": true
+     },
+     "word_order": {
+      "advanced": true
+     }
+    }
+   },
+   "remote": {
+    "$defs": {
+     "Addressing": {
+      "description": "How addresses in the registry are expressed.\n\noffset: the zero-based protocol address (default; 'exact' is accepted as a synonym).\noffset_plus: one-based, as printed in many vendor manuals; 1 is subtracted.\naddress: table-prefixed one-based (1, 10001, 30001, 40001 ranges); the table base is subtracted.",
+      "enum": [
+       "offset",
+       "offset_plus",
+       "address"
+      ],
+      "title": "Addressing",
+      "type": "string"
+     },
+     "DriverRole": {
+      "description": "Which side of Modbus this remote is. ``client``, ``server`` and ``outstation`` are accepted spellings.",
+      "enum": [
+       "master",
+       "slave"
+      ],
+      "title": "DriverRole",
+      "type": "string"
+     },
+     "Parity": {
+      "enum": [
+       "none",
+       "even",
+       "odd",
+       "mark",
+       "space"
+      ],
+      "title": "Parity",
+      "type": "string"
+     },
+     "StopBits": {
+      "enum": [
+       1.0,
+       1.5,
+       2.0
+      ],
+      "title": "StopBits",
+      "type": "number"
+     },
+     "TransportProtocol": {
+      "enum": [
+       "tcp",
+       "udp",
+       "serial",
+       "tls"
+      ],
+      "title": "TransportProtocol",
+      "type": "string"
+     },
+     "WordOrder": {
+      "enum": [
+       "big",
+       "little"
+      ],
+      "title": "WordOrder",
+      "type": "string"
+     }
+    },
+    "additionalProperties": true,
+    "properties": {
+     "addressing": {
+      "$ref": "#/$defs/Addressing",
+      "default": "offset"
+     },
+     "baudrate": {
+      "default": 9600,
+      "title": "Baudrate",
+      "type": "integer"
+     },
+     "bind_host": {
+      "default": "0.0.0.0",
+      "title": "Bind Host",
+      "type": "string"
+     },
+     "bytesize": {
+      "default": 8,
+      "maximum": 8,
+      "minimum": 5,
+      "title": "Bytesize",
+      "type": "integer"
+     },
+     "ca_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Ca Path"
+     },
+     "cert_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Cert Path"
+     },
+     "client_auth": {
+      "default": false,
+      "title": "Client Auth",
+      "type": "boolean"
+     },
+     "debug": {
+      "default": false,
+      "title": "Debug",
+      "type": "boolean"
+     },
+     "device_address": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Device Address"
+     },
+     "driver_role": {
+      "$ref": "#/$defs/DriverRole",
+      "default": "master"
+     },
+     "driver_type": {
+      "title": "Driver Type",
+      "type": "string"
+     },
+     "handle_local_echo": {
+      "default": false,
+      "title": "Handle Local Echo",
+      "type": "boolean"
+     },
+     "heart_beat_point": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Heart Beat Point"
+     },
+     "key_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Key Path"
+     },
+     "max_gap": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Max Gap",
+      "type": "integer"
+     },
+     "module": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Module"
+     },
+     "parity": {
+      "$ref": "#/$defs/Parity",
+      "default": "none"
+     },
+     "persistent_connection": {
+      "default": true,
+      "description": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message.",
+      "title": "Persistent Connection",
+      "type": "boolean"
+     },
+     "plugins": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Plugins",
+      "type": "array"
+     },
+     "port": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Port"
+     },
+     "proxy_group": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Proxy Group"
+     },
+     "register_map": {
+      "anyOf": [
+       {
+        "items": {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Register Map"
+     },
+     "registration_timeout": {
+      "default": 30.0,
+      "exclusiveMinimum": 0,
+      "title": "Registration Timeout",
+      "type": "number"
+     },
+     "reply_timeout": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Reply Timeout"
+     },
+     "retries": {
+      "default": 3,
+      "minimum": 0,
+      "title": "Retries",
+      "type": "integer"
+     },
+     "stopbits": {
+      "$ref": "#/$defs/StopBits",
+      "default": 1.0
+     },
+     "timeout": {
+      "default": 3.0,
+      "exclusiveMinimum": 0,
+      "title": "Timeout",
+      "type": "number"
+     },
+     "tls_verify": {
+      "default": true,
+      "title": "Tls Verify",
+      "type": "boolean"
+     },
+     "transport_protocol": {
+      "$ref": "#/$defs/TransportProtocol",
+      "default": "tcp"
+     },
+     "unit_id": {
+      "default": 1,
+      "title": "Unit Id",
+      "type": "integer"
+     },
+     "word_order": {
+      "$ref": "#/$defs/WordOrder",
+      "default": "big"
+     }
+    },
+    "required": [
+     "driver_type"
+    ],
+    "title": "ModbusRemoteConfig",
+    "type": "object",
+    "x-hints": {
+     "addressing": {
+      "advanced": false,
+      "group": "Protocol and timing"
+     },
+     "baudrate": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "serial"
+      }
+     },
+     "bind_host": {
+      "advanced": false,
+      "group": "Connection"
+     },
+     "bytesize": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "serial"
+      }
+     },
+     "ca_path": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "tls"
+      }
+     },
+     "cert_path": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "tls"
+      }
+     },
+     "client_auth": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "tls"
+      }
+     },
+     "debug": {
+      "advanced": true
+     },
+     "device_address": {
+      "advanced": false,
+      "group": "Connection"
+     },
+     "driver_role": {
+      "advanced": true
+     },
+     "driver_type": {
+      "advanced": false
+     },
+     "handle_local_echo": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "serial"
+      }
+     },
+     "heart_beat_point": {
+      "advanced": false,
+      "group": "Polling"
+     },
+     "key_path": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "tls"
+      }
+     },
+     "max_gap": {
+      "advanced": false,
+      "group": "Protocol and timing"
+     },
+     "module": {
+      "advanced": true
+     },
+     "parity": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "serial"
+      }
+     },
+     "persistent_connection": {
+      "advanced": true,
+      "tooltip": "Keep one IPC connection to the proxy open for every request and push instead of one connection per message."
+     },
+     "plugins": {
+      "advanced": true
+     },
+     "port": {
+      "advanced": false,
+      "group": "Connection"
+     },
+     "proxy_group": {
+      "advanced": true
+     },
+     "register_map": {
+      "advanced": true
+     },
+     "registration_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "reply_timeout": {
+      "advanced": true,
+      "unit": "s"
+     },
+     "retries": {
+      "advanced": false,
+      "group": "Protocol and timing"
+     },
+     "stopbits": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "serial"
+      }
+     },
+     "timeout": {
+      "advanced": false,
+      "group": "Protocol and timing",
+      "unit": "s"
+     },
+     "tls_verify": {
+      "advanced": true,
+      "show_when": {
+       "transport_protocol": "tls"
+      }
+     },
+     "transport_protocol": {
+      "advanced": false,
+      "group": "Connection"
+     },
+     "unit_id": {
+      "advanced": false,
+      "group": "Connection"
+     },
+     "word_order": {
+      "advanced": false,
+      "group": "Protocol and timing"
+     }
+    }
+   },
+   "roles": [
+    "master",
+    "slave"
+   ]
+  }
+ },
+ "schemas": {
+  "bus_adapter/config": {
+   "$defs": {
+    "MessageBusConfig": {
+     "additionalProperties": true,
+     "description": "Configuration for a single remote message bus connection.\n\nEvery field other than ``name`` is forwarded to the protocol proxy process as a\ncommand line argument (``--field-name value``), so field names must match the\nproxy class's constructor parameters. ``extra='allow'`` lets bus types without a\ndedicated config class pass arbitrary parameters through to their proxy.",
+     "properties": {
+      "local_subscriptions": {
+       "description": "Remote topics to serve from local data as soon as the proxy is up: each is resolved through platform.presentation to a canonical resource whose publications are transformed and published to that remote topic continuously (the same as a SUBSCRIBE_LOCAL request).",
+       "items": {
+        "type": "string"
+       },
+       "title": "Local Subscriptions",
+       "type": "array"
+      },
+      "name": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Optional stable handle for this remote. When set, the unique_remote_id is (bus_type, name).",
+       "title": "Name"
+      },
+      "remote_subscriptions": {
+       "description": "Remote topics the proxy subscribes to on the foreign bus as soon as it is up; messages arriving on them are relayed into VOLTTRON (the same as the subscribe RPC).",
+       "items": {
+        "type": "string"
+       },
+       "title": "Remote Subscriptions",
+       "type": "array"
+      }
+     },
+     "title": "MessageBusConfig",
+     "type": "object"
+    }
+   },
+   "properties": {
+    "adapters": {
+     "description": "List of remote bus connections to proxy.",
+     "items": {
+      "$ref": "#/$defs/MessageBusConfig"
+     },
+     "title": "Adapters",
+     "type": "array"
+    },
+    "bus_type": {
+     "default": "",
+     "description": "Protocol plugin name, e.g. \"mqtt\" or \"nats\". Resolved to protocol_proxy.protocol.<bus_type>.",
+     "title": "Bus Type",
+     "type": "string"
+    },
+    "inbound_writes": {
+     "default": true,
+     "description": "translate mode: write remote messages whose resource has an rpc_topic through the Resource Bridge (False: publish them locally as before).",
+     "title": "Inbound Writes",
+     "type": "boolean"
+    },
+    "mode": {
+     "default": "translate",
+     "description": "How the adapter bridges VOLTTRON and the remote bus. \"translate\": local device publications are transformed into the remote topic's format here, and a remote message for a device is written through the Resource Bridge's write RPC (see resource_bridge) or, for a remote-owned resource, published locally in the canonical format. \"relay\": OpenFMB (or any aliased format) lives on the VOLTTRON bus itself under the remote topic; the adapter only re-serialises between the remote encoding and the local JSON form, and the Resource Bridge does the translating.",
+     "enum": [
+      "translate",
+      "relay"
+     ],
+     "title": "Mode",
+     "type": "string"
+    },
+    "proxy_registration_timeout": {
+     "default": 30.0,
+     "description": "Seconds to wait for a newly launched proxy to register.",
+     "exclusiveMinimum": 0,
+     "title": "Proxy Registration Timeout",
+     "type": "number"
+    },
+    "resource_bridge": {
+     "default": "platform.resource_bridge",
+     "description": "translate mode: VIP identity of the Resource Bridge that writes devices.",
+     "title": "Resource Bridge",
+     "type": "string"
+    },
+    "rpc_timeout": {
+     "default": 15.0,
+     "description": "Seconds to wait for the Resource Bridge's write.",
+     "exclusiveMinimum": 0,
+     "title": "Rpc Timeout",
+     "type": "number"
+    }
+   },
+   "title": "MessageBusAdapterConfig",
+   "type": "object",
+   "x-hints": {
+    "adapters": {
+     "advanced": false,
+     "tooltip": "List of remote bus connections to proxy."
+    },
+    "bus_type": {
+     "advanced": false,
+     "tooltip": "Protocol plugin name, e.g. \"mqtt\" or \"nats\". Resolved to protocol_proxy.protocol.<bus_type>."
+    },
+    "inbound_writes": {
+     "advanced": false,
+     "tooltip": "translate mode: write remote messages whose resource has an rpc_topic through the Resource Bridge (False: publish them locally as before)."
+    },
+    "mode": {
+     "advanced": false,
+     "tooltip": "How the adapter bridges VOLTTRON and the remote bus. \"translate\": local device publications are transformed into the remote topic's format here, and a remote message for a device is written through the Resource Bridge's write RPC (see resource_bridge) or, for a remote-owned resource, published locally in the canonical format. \"relay\": OpenFMB (or any aliased format) lives on the VOLTTRON bus itself under the remote topic; the adapter only re-serialises between the remote encoding and the local JSON form, and the Resource Bridge does the translating."
+    },
+    "proxy_registration_timeout": {
+     "advanced": false,
+     "tooltip": "Seconds to wait for a newly launched proxy to register.",
+     "unit": "s"
+    },
+    "resource_bridge": {
+     "advanced": false,
+     "tooltip": "translate mode: VIP identity of the Resource Bridge that writes devices."
+    },
+    "rpc_timeout": {
+     "advanced": false,
+     "tooltip": "Seconds to wait for the Resource Bridge's write.",
+     "unit": "s"
+    }
+   }
+  },
+  "bus_adapter/mqtt": {
+   "additionalProperties": true,
+   "description": "Parameters of protocol_proxy.protocol.mqtt.MQTTProxy. Unset optional values are not sent.",
+   "properties": {
+    "bind_address": {
+     "default": "",
+     "title": "Bind Address",
+     "type": "string"
+    },
+    "bind_port": {
+     "default": 0,
+     "title": "Bind Port",
+     "type": "integer"
+    },
+    "client_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Client Id"
+    },
+    "host": {
+     "title": "Host",
+     "type": "string"
+    },
+    "keepalive": {
+     "default": 60,
+     "title": "Keepalive",
+     "type": "integer"
+    },
+    "local_subscriptions": {
+     "description": "Remote topics to serve from local data as soon as the proxy is up: each is resolved through platform.presentation to a canonical resource whose publications are transformed and published to that remote topic continuously (the same as a SUBSCRIBE_LOCAL request).",
+     "items": {
+      "type": "string"
+     },
+     "title": "Local Subscriptions",
+     "type": "array"
+    },
+    "name": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Optional stable handle for this remote. When set, the unique_remote_id is (bus_type, name).",
+     "title": "Name"
+    },
+    "password": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Password"
+    },
+    "port": {
+     "default": 1883,
+     "title": "Port",
+     "type": "integer"
+    },
+    "protocol": {
+     "anyOf": [
+      {
+       "enum": [
+        "MQTTv31",
+        "MQTTv311",
+        "MQTTv5"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Protocol"
+    },
+    "qos": {
+     "anyOf": [
+      {
+       "enum": [
+        0,
+        1,
+        2
+       ],
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Qos"
+    },
+    "reconnect_max_delay": {
+     "anyOf": [
+      {
+       "exclusiveMinimum": 0,
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Reconnect Max Delay"
+    },
+    "reconnect_min_delay": {
+     "anyOf": [
+      {
+       "exclusiveMinimum": 0,
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Reconnect Min Delay"
+    },
+    "remote_subscriptions": {
+     "description": "Remote topics the proxy subscribes to on the foreign bus as soon as it is up; messages arriving on them are relayed into VOLTTRON (the same as the subscribe RPC).",
+     "items": {
+      "type": "string"
+     },
+     "title": "Remote Subscriptions",
+     "type": "array"
+    },
+    "tls": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Tls"
+    },
+    "username": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Username"
+    }
+   },
+   "required": [
+    "host"
+   ],
+   "title": "MQTTConfig",
+   "type": "object",
+   "x-hints": {
+    "bind_address": {
+     "advanced": true
+    },
+    "bind_port": {
+     "advanced": true
+    },
+    "client_id": {
+     "advanced": true
+    },
+    "host": {
+     "advanced": false
+    },
+    "keepalive": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "local_subscriptions": {
+     "advanced": false,
+     "tooltip": "Remote topics to serve from local data as soon as the proxy is up: each is resolved through platform.presentation to a canonical resource whose publications are transformed and published to that remote topic continuously (the same as a SUBSCRIBE_LOCAL request)."
+    },
+    "name": {
+     "advanced": false,
+     "tooltip": "Optional stable handle for this remote. When set, the unique_remote_id is (bus_type, name)."
+    },
+    "password": {
+     "advanced": true
+    },
+    "port": {
+     "advanced": true
+    },
+    "protocol": {
+     "advanced": true
+    },
+    "qos": {
+     "advanced": true
+    },
+    "reconnect_max_delay": {
+     "advanced": true
+    },
+    "reconnect_min_delay": {
+     "advanced": true
+    },
+    "remote_subscriptions": {
+     "advanced": false,
+     "tooltip": "Remote topics the proxy subscribes to on the foreign bus as soon as it is up; messages arriving on them are relayed into VOLTTRON (the same as the subscribe RPC)."
+    },
+    "tls": {
+     "advanced": true
+    },
+    "username": {
+     "advanced": true
+    }
+   }
+  },
+  "bus_adapter/nats": {
+   "additionalProperties": true,
+   "description": "Parameters of protocol_proxy.protocol.nats.NATSProxy.\n\n``servers`` is one URL or a list of URLs; it is sent to the proxy as a comma-separated string.",
+   "properties": {
+    "connect_timeout": {
+     "anyOf": [
+      {
+       "exclusiveMinimum": 0,
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Connect Timeout"
+    },
+    "local_subscriptions": {
+     "description": "Remote topics to serve from local data as soon as the proxy is up: each is resolved through platform.presentation to a canonical resource whose publications are transformed and published to that remote topic continuously (the same as a SUBSCRIBE_LOCAL request).",
+     "items": {
+      "type": "string"
+     },
+     "title": "Local Subscriptions",
+     "type": "array"
+    },
+    "max_reconnect_attempts": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Max Reconnect Attempts"
+    },
+    "name": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Name"
+    },
+    "nats_token": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Nats Token"
+    },
+    "password": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Password"
+    },
+    "reconnect_time_wait": {
+     "anyOf": [
+      {
+       "exclusiveMinimum": 0,
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Reconnect Time Wait"
+    },
+    "remote_subscriptions": {
+     "description": "Remote topics the proxy subscribes to on the foreign bus as soon as it is up; messages arriving on them are relayed into VOLTTRON (the same as the subscribe RPC).",
+     "items": {
+      "type": "string"
+     },
+     "title": "Remote Subscriptions",
+     "type": "array"
+    },
+    "servers": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      }
+     ],
+     "title": "Servers"
+    },
+    "tls": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Tls"
+    },
+    "user": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "User"
+    }
+   },
+   "required": [
+    "servers"
+   ],
+   "title": "NATSConfig",
+   "type": "object",
+   "x-hints": {
+    "connect_timeout": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "local_subscriptions": {
+     "advanced": false,
+     "tooltip": "Remote topics to serve from local data as soon as the proxy is up: each is resolved through platform.presentation to a canonical resource whose publications are transformed and published to that remote topic continuously (the same as a SUBSCRIBE_LOCAL request)."
+    },
+    "max_reconnect_attempts": {
+     "advanced": true
+    },
+    "name": {
+     "advanced": true
+    },
+    "nats_token": {
+     "advanced": true
+    },
+    "password": {
+     "advanced": true
+    },
+    "reconnect_time_wait": {
+     "advanced": true
+    },
+    "remote_subscriptions": {
+     "advanced": false,
+     "tooltip": "Remote topics the proxy subscribes to on the foreign bus as soon as it is up; messages arriving on them are relayed into VOLTTRON (the same as the subscribe RPC)."
+    },
+    "servers": {
+     "advanced": false
+    },
+    "tls": {
+     "advanced": true
+    },
+    "user": {
+     "advanced": true
+    }
+   }
+  },
+  "driver/config": {
+   "$defs": {
+    "BaseModel": {
+     "properties": {},
+     "title": "BaseModel",
+     "type": "object"
+    },
+    "GroupConfig": {
+     "properties": {
+      "minimum_polling_interval": {
+       "default": 1.0,
+       "title": "Minimum Polling Interval",
+       "type": "number"
+      },
+      "parallel_subgroups": {
+       "default": false,
+       "title": "Parallel Subgroups",
+       "type": "boolean"
+      },
+      "poll_scheduler_class_name": {
+       "default": "StaticCyclicPollScheduler",
+       "title": "Poll Scheduler Class Name",
+       "type": "string"
+      },
+      "poll_scheduler_configs": {
+       "anyOf": [
+        {
+         "$ref": "#/$defs/BaseModel"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null
+      },
+      "poll_scheduler_module": {
+       "default": "platform_driver.poll_scheduler",
+       "title": "Poll Scheduler Module",
+       "type": "string"
+      },
+      "start_offset": {
+       "default": 0.0,
+       "title": "Start Offset",
+       "type": "number"
+      }
+     },
+     "title": "GroupConfig",
+     "type": "object"
+    }
+   },
+   "properties": {
+    "all_publish_interval": {
+     "default": 0.0,
+     "title": "All Publish Interval",
+     "type": "number"
+    },
+    "allow_duplicate_remotes": {
+     "default": false,
+     "title": "Allow Duplicate Remotes",
+     "type": "boolean"
+    },
+    "allow_no_lock_write": {
+     "default": true,
+     "title": "Allow No Lock Write",
+     "type": "boolean"
+    },
+    "breadth_first_base": {
+     "default": "points",
+     "title": "Breadth First Base",
+     "type": "string"
+    },
+    "default_polling_interval": {
+     "default": 60,
+     "title": "Default Polling Interval",
+     "type": "number"
+    },
+    "depth_first_base": {
+     "default": "devices",
+     "title": "Depth First Base",
+     "type": "string"
+    },
+    "driver_heartbeat_interval": {
+     "default": 60.0,
+     "title": "Driver Heartbeat Interval",
+     "type": "number"
+    },
+    "driver_scrape_interval": {
+     "default": 0.02,
+     "title": "Driver Scrape Interval",
+     "type": "number"
+    },
+    "group_offset_interval": {
+     "default": 0.0,
+     "title": "Group Offset Interval",
+     "type": "number"
+    },
+    "groups": {
+     "additionalProperties": {
+      "$ref": "#/$defs/GroupConfig"
+     },
+     "default": {},
+     "title": "Groups",
+     "type": "object"
+    },
+    "max_concurrent_publishes": {
+     "default": 10000,
+     "title": "Max Concurrent Publishes",
+     "type": "integer"
+    },
+    "max_open_sockets": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Max Open Sockets"
+    },
+    "poll_scheduler_class_name": {
+     "default": "StaticCyclicPollScheduler",
+     "title": "Poll Scheduler Class Name",
+     "type": "string"
+    },
+    "poll_scheduler_configs": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/BaseModel"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "poll_scheduler_module": {
+     "default": "platform_driver.poll_scheduler",
+     "title": "Poll Scheduler Module",
+     "type": "string"
+    },
+    "publish_breadth_first_all": {
+     "default": false,
+     "title": "Publish Breadth First All",
+     "type": "boolean"
+    },
+    "publish_breadth_first_multi": {
+     "default": false,
+     "title": "Publish Breadth First Multi",
+     "type": "boolean"
+    },
+    "publish_breadth_first_single": {
+     "default": false,
+     "title": "Publish Breadth First Single",
+     "type": "boolean"
+    },
+    "publish_depth_first_all": {
+     "default": false,
+     "title": "Publish Depth First All",
+     "type": "boolean"
+    },
+    "publish_depth_first_multi": {
+     "default": true,
+     "title": "Publish Depth First Multi",
+     "type": "boolean"
+    },
+    "publish_depth_first_single": {
+     "default": false,
+     "title": "Publish Depth First Single",
+     "type": "boolean"
+    },
+    "reservation_preempt_grace_time": {
+     "default": 60.0,
+     "title": "Reservation Preempt Grace Time",
+     "type": "number"
+    },
+    "reservation_publish_interval": {
+     "default": 60.0,
+     "title": "Reservation Publish Interval",
+     "type": "number"
+    },
+    "reservation_required_for_write": {
+     "default": false,
+     "title": "Reservation Required For Write",
+     "type": "boolean"
+    },
+    "scalability_test": {
+     "default": false,
+     "title": "Scalability Test",
+     "type": "boolean"
+    },
+    "scalability_test_iterations": {
+     "default": 3,
+     "title": "Scalability Test Iterations",
+     "type": "integer"
+    },
+    "served_state_flush_interval": {
+     "default": 5.0,
+     "title": "Served State Flush Interval",
+     "type": "number"
+    },
+    "stale_timeout": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Stale Timeout"
+    },
+    "stale_timeout_multiplier": {
+     "default": 3.0,
+     "title": "Stale Timeout Multiplier",
+     "type": "number"
+    },
+    "strict_all_publishes": {
+     "default": false,
+     "title": "Strict All Publishes",
+     "type": "boolean"
+    },
+    "timezone": {
+     "default": "UTC",
+     "title": "Timezone",
+     "type": "string"
+    }
+   },
+   "title": "PlatformDriverConfig",
+   "type": "object",
+   "x-hints": {
+    "all_publish_interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "allow_duplicate_remotes": {
+     "advanced": true
+    },
+    "allow_no_lock_write": {
+     "advanced": true
+    },
+    "breadth_first_base": {
+     "advanced": true
+    },
+    "default_polling_interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "depth_first_base": {
+     "advanced": true
+    },
+    "driver_heartbeat_interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "driver_scrape_interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "group_offset_interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "groups": {
+     "advanced": true
+    },
+    "max_concurrent_publishes": {
+     "advanced": true
+    },
+    "max_open_sockets": {
+     "advanced": true
+    },
+    "poll_scheduler_class_name": {
+     "advanced": true
+    },
+    "poll_scheduler_configs": {
+     "advanced": true
+    },
+    "poll_scheduler_module": {
+     "advanced": true
+    },
+    "publish_breadth_first_all": {
+     "advanced": true
+    },
+    "publish_breadth_first_multi": {
+     "advanced": true
+    },
+    "publish_breadth_first_single": {
+     "advanced": true
+    },
+    "publish_depth_first_all": {
+     "advanced": true
+    },
+    "publish_depth_first_multi": {
+     "advanced": true
+    },
+    "publish_depth_first_single": {
+     "advanced": true
+    },
+    "reservation_preempt_grace_time": {
+     "advanced": true
+    },
+    "reservation_publish_interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "reservation_required_for_write": {
+     "advanced": true
+    },
+    "scalability_test": {
+     "advanced": true
+    },
+    "scalability_test_iterations": {
+     "advanced": true
+    },
+    "served_state_flush_interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "stale_timeout": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "stale_timeout_multiplier": {
+     "advanced": true
+    },
+    "strict_all_publishes": {
+     "advanced": true
+    },
+    "timezone": {
+     "advanced": true
+    }
+   }
+  },
+  "driver/device": {
+   "$defs": {
+    "DataSource": {
+     "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+     "enum": [
+      "short_poll",
+      "long_poll",
+      "poll_once",
+      "static",
+      "never_poll",
+      "server"
+     ],
+     "title": "DataSource",
+     "type": "string"
+    },
+    "PointConfig": {
+     "properties": {
+      "Data Source": {
+       "$ref": "#/$defs/DataSource",
+       "default": "short_poll"
+      },
+      "Notes": {
+       "default": "",
+       "title": "Notes",
+       "type": "string"
+      },
+      "Reference Point Name": {
+       "default": "",
+       "title": "Reference Point Name",
+       "type": "string"
+      },
+      "Remote Writable": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Remote Writable"
+      },
+      "Unit Details": {
+       "default": "",
+       "title": "Unit Details",
+       "type": "string"
+      },
+      "Units": {
+       "default": "",
+       "title": "Units",
+       "type": "string"
+      },
+      "Volttron Point Name": {
+       "title": "Volttron Point Name",
+       "type": "string"
+      },
+      "Writable": {
+       "default": false,
+       "title": "Writable",
+       "type": "boolean"
+      },
+      "active": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Active"
+      },
+      "interval": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Interval"
+      },
+      "polling_group": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Polling Group"
+      },
+      "publish_breadth_first_all": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publish Breadth First All"
+      },
+      "publish_breadth_first_multi": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publish Breadth First Multi"
+      },
+      "publish_breadth_first_single": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publish Breadth First Single"
+      },
+      "publish_depth_first_all": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publish Depth First All"
+      },
+      "publish_depth_first_multi": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publish Depth First Multi"
+      },
+      "publish_depth_first_single": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publish Depth First Single"
+      },
+      "reservation_required_for_write": {
+       "default": false,
+       "title": "Reservation Required For Write",
+       "type": "boolean"
+      },
+      "stale_timeout": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Stale Timeout"
+      },
+      "stale_timeout_multiplier": {
+       "default": null,
+       "title": "Stale Timeout Multiplier",
+       "type": "number"
+      },
+      "strict_all_publishes": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Strict All Publishes"
+      }
+     },
+     "required": [
+      "Volttron Point Name"
+     ],
+     "title": "PointConfig",
+     "type": "object"
+    }
+   },
+   "properties": {
+    "active": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Active"
+    },
+    "all_publish_interval": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "All Publish Interval"
+    },
+    "allow_duplicate_remotes": {
+     "default": false,
+     "title": "Allow Duplicate Remotes",
+     "type": "boolean"
+    },
+    "equipment_specific_fields": {
+     "additionalProperties": true,
+     "default": {},
+     "title": "Equipment Specific Fields",
+     "type": "object"
+    },
+    "interval": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Interval"
+    },
+    "polling_group": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Polling Group"
+    },
+    "publish_breadth_first_all": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Breadth First All"
+    },
+    "publish_breadth_first_multi": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Breadth First Multi"
+    },
+    "publish_breadth_first_single": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Breadth First Single"
+    },
+    "publish_depth_first_all": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Depth First All"
+    },
+    "publish_depth_first_multi": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Depth First Multi"
+    },
+    "publish_depth_first_single": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Depth First Single"
+    },
+    "registry_config": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/PointConfig"
+     },
+     "title": "Registry Config",
+     "type": "array"
+    },
+    "reservation_required_for_write": {
+     "default": false,
+     "title": "Reservation Required For Write",
+     "type": "boolean"
+    },
+    "stale_timeout": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Stale Timeout"
+    },
+    "stale_timeout_multiplier": {
+     "default": null,
+     "title": "Stale Timeout Multiplier",
+     "type": "number"
+    },
+    "strict_all_publishes": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Strict All Publishes"
+    }
+   },
+   "title": "DeviceConfig",
+   "type": "object",
+   "x-hints": {
+    "active": {
+     "advanced": true
+    },
+    "all_publish_interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "allow_duplicate_remotes": {
+     "advanced": true
+    },
+    "equipment_specific_fields": {
+     "advanced": true
+    },
+    "interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "polling_group": {
+     "advanced": true
+    },
+    "publish_breadth_first_all": {
+     "advanced": true
+    },
+    "publish_breadth_first_multi": {
+     "advanced": true
+    },
+    "publish_breadth_first_single": {
+     "advanced": true
+    },
+    "publish_depth_first_all": {
+     "advanced": true
+    },
+    "publish_depth_first_multi": {
+     "advanced": true
+    },
+    "publish_depth_first_single": {
+     "advanced": true
+    },
+    "registry_config": {
+     "advanced": true
+    },
+    "reservation_required_for_write": {
+     "advanced": true
+    },
+    "stale_timeout": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "stale_timeout_multiplier": {
+     "advanced": true
+    },
+    "strict_all_publishes": {
+     "advanced": true
+    }
+   }
+  },
+  "driver/point": {
+   "$defs": {
+    "DataSource": {
+     "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+     "enum": [
+      "short_poll",
+      "long_poll",
+      "poll_once",
+      "static",
+      "never_poll",
+      "server"
+     ],
+     "title": "DataSource",
+     "type": "string"
+    }
+   },
+   "properties": {
+    "Data Source": {
+     "$ref": "#/$defs/DataSource",
+     "default": "short_poll"
+    },
+    "Notes": {
+     "default": "",
+     "title": "Notes",
+     "type": "string"
+    },
+    "Reference Point Name": {
+     "default": "",
+     "title": "Reference Point Name",
+     "type": "string"
+    },
+    "Remote Writable": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Remote Writable"
+    },
+    "Unit Details": {
+     "default": "",
+     "title": "Unit Details",
+     "type": "string"
+    },
+    "Units": {
+     "default": "",
+     "title": "Units",
+     "type": "string"
+    },
+    "Volttron Point Name": {
+     "title": "Volttron Point Name",
+     "type": "string"
+    },
+    "Writable": {
+     "default": false,
+     "title": "Writable",
+     "type": "boolean"
+    },
+    "active": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Active"
+    },
+    "interval": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Interval"
+    },
+    "polling_group": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Polling Group"
+    },
+    "publish_breadth_first_all": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Breadth First All"
+    },
+    "publish_breadth_first_multi": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Breadth First Multi"
+    },
+    "publish_breadth_first_single": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Breadth First Single"
+    },
+    "publish_depth_first_all": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Depth First All"
+    },
+    "publish_depth_first_multi": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Depth First Multi"
+    },
+    "publish_depth_first_single": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publish Depth First Single"
+    },
+    "reservation_required_for_write": {
+     "default": false,
+     "title": "Reservation Required For Write",
+     "type": "boolean"
+    },
+    "stale_timeout": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Stale Timeout"
+    },
+    "stale_timeout_multiplier": {
+     "default": null,
+     "title": "Stale Timeout Multiplier",
+     "type": "number"
+    },
+    "strict_all_publishes": {
+     "anyOf": [
+      {
+       "type": "boolean"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Strict All Publishes"
+    }
+   },
+   "required": [
+    "Volttron Point Name"
+   ],
+   "title": "PointConfig",
+   "type": "object",
+   "x-hints": {
+    "Data Source": {
+     "advanced": true
+    },
+    "Notes": {
+     "advanced": true
+    },
+    "Reference Point Name": {
+     "advanced": true
+    },
+    "Remote Writable": {
+     "advanced": true
+    },
+    "Unit Details": {
+     "advanced": true
+    },
+    "Units": {
+     "advanced": true
+    },
+    "Volttron Point Name": {
+     "advanced": false
+    },
+    "Writable": {
+     "advanced": true
+    },
+    "active": {
+     "advanced": true
+    },
+    "interval": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "polling_group": {
+     "advanced": true
+    },
+    "publish_breadth_first_all": {
+     "advanced": true
+    },
+    "publish_breadth_first_multi": {
+     "advanced": true
+    },
+    "publish_breadth_first_single": {
+     "advanced": true
+    },
+    "publish_depth_first_all": {
+     "advanced": true
+    },
+    "publish_depth_first_multi": {
+     "advanced": true
+    },
+    "publish_depth_first_single": {
+     "advanced": true
+    },
+    "reservation_required_for_write": {
+     "advanced": true
+    },
+    "stale_timeout": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "stale_timeout_multiplier": {
+     "advanced": true
+    },
+    "strict_all_publishes": {
+     "advanced": true
+    }
+   }
+  },
+  "driver/remote": {
+   "additionalProperties": true,
+   "properties": {
+    "debug": {
+     "default": false,
+     "title": "Debug",
+     "type": "boolean"
+    },
+    "driver_role": {
+     "default": "client",
+     "title": "Driver Role",
+     "type": "string"
+    },
+    "driver_type": {
+     "title": "Driver Type",
+     "type": "string"
+    },
+    "heart_beat_point": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Heart Beat Point"
+    },
+    "module": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Module"
+    },
+    "plugins": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Plugins",
+     "type": "array"
+    }
+   },
+   "required": [
+    "driver_type"
+   ],
+   "title": "RemoteConfig",
+   "type": "object",
+   "x-hints": {
+    "debug": {
+     "advanced": true
+    },
+    "driver_role": {
+     "advanced": true
+    },
+    "driver_type": {
+     "advanced": false
+    },
+    "heart_beat_point": {
+     "advanced": true
+    },
+    "module": {
+     "advanced": true
+    },
+    "plugins": {
+     "advanced": true
+    }
+   }
+  },
+  "resource_bridge/config": {
+   "$defs": {
+    "BridgeConfig": {
+     "additionalProperties": false,
+     "description": "One direction of mirroring: every message of ``source`` is transformed into the format of ``target`` (the chain\nthe presentation service chooses for the fields the message carries) and written to it, or published on it.",
+     "properties": {
+      "enabled": {
+       "default": true,
+       "title": "Enabled",
+       "type": "boolean"
+      },
+      "name": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Stable handle for the bridge; defaults to \"<source>><target>\".",
+       "title": "Name"
+      },
+      "points": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Only these source points are bridged (device sources; all by default).",
+       "title": "Points"
+      },
+      "source": {
+       "$ref": "#/$defs/EndConfig",
+       "description": "Where messages come from: a device (its publications) or a bus topic."
+      },
+      "target": {
+       "$ref": "#/$defs/EndConfig",
+       "description": "Where they go: a device (written through the driver) or a bus topic (published)."
+      },
+      "write_unchanged": {
+       "default": false,
+       "description": "Write a point again even when its value is the one last written to the target (by default only changes are written).",
+       "title": "Write Unchanged",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "source",
+      "target"
+     ],
+     "title": "BridgeConfig",
+     "type": "object"
+    },
+    "EndConfig": {
+     "additionalProperties": false,
+     "description": "One end of a bridge: a UAI the presentation service knows. A *device* end (the default) is the canonical device\nthe UAI leads to, read from its publications or written through the driver. A *bus* end is the UAI itself as a\ntopic on the VOLTTRON bus carrying messages in the UAI's (alias) format: an OpenFMB profile topic, read from or\npublished to, so OpenFMB-aware agents and the Message Bus Adapter in relay mode can take part.",
+     "properties": {
+      "bus": {
+       "default": false,
+       "description": "Treat the UAI as a topic on the VOLTTRON bus rather than as a device.",
+       "title": "Bus",
+       "type": "boolean"
+      },
+      "topic": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "Bus end only: the topic, when it is not the UAI joined with \"/\".",
+       "title": "Topic"
+      },
+      "uai": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Uai",
+       "type": "array"
+      }
+     },
+     "required": [
+      "uai"
+     ],
+     "title": "EndConfig",
+     "type": "object"
+    }
+   },
+   "additionalProperties": false,
+   "properties": {
+    "bridges": {
+     "items": {
+      "$ref": "#/$defs/BridgeConfig"
+     },
+     "title": "Bridges",
+     "type": "array"
+    },
+    "chain_cache_size": {
+     "default": 32,
+     "description": "Chains kept per bridge, one per distinct set of fields a publication carried.",
+     "minimum": 1,
+     "title": "Chain Cache Size",
+     "type": "integer"
+    },
+    "driver": {
+     "default": "platform.driver",
+     "description": "VIP identity of the platform driver that owns the targets.",
+     "title": "Driver",
+     "type": "string"
+    },
+    "echo_window": {
+     "default": 5.0,
+     "description": "Seconds during which a publication that merely confirms a value this agent wrote to that device is not bridged back.",
+     "minimum": 0,
+     "title": "Echo Window",
+     "type": "number"
+    },
+    "presentation_service": {
+     "default": "platform.presentation",
+     "description": "VIP identity of the interoperability (presentation) service.",
+     "title": "Presentation Service",
+     "type": "string"
+    },
+    "result_topic_prefix": {
+     "default": "resource_bridge",
+     "description": "Each bridge publishes the outcome of every write on <prefix>/<bridge key>.",
+     "title": "Result Topic Prefix",
+     "type": "string"
+    },
+    "rpc_timeout": {
+     "default": 10.0,
+     "exclusiveMinimum": 0,
+     "title": "Rpc Timeout",
+     "type": "number"
+    },
+    "stale_after": {
+     "anyOf": [
+      {
+       "minimum": 0,
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Before deciding whether a target point needs writing, ask the driver (its last RPC) for points whose last known value is older than this many seconds or unknown. Unset: rely on the target's publications and this agent's own writes only.",
+     "title": "Stale After"
+    }
+   },
+   "title": "ResourceBridgeConfig",
+   "type": "object",
+   "x-hints": {
+    "bridges": {
+     "advanced": true
+    },
+    "chain_cache_size": {
+     "advanced": false,
+     "tooltip": "Chains kept per bridge, one per distinct set of fields a publication carried."
+    },
+    "driver": {
+     "advanced": false,
+     "tooltip": "VIP identity of the platform driver that owns the targets."
+    },
+    "echo_window": {
+     "advanced": false,
+     "tooltip": "Seconds during which a publication that merely confirms a value this agent wrote to that device is not bridged back.",
+     "unit": "s"
+    },
+    "presentation_service": {
+     "advanced": false,
+     "tooltip": "VIP identity of the interoperability (presentation) service."
+    },
+    "result_topic_prefix": {
+     "advanced": false,
+     "tooltip": "Each bridge publishes the outcome of every write on <prefix>/<bridge key>."
+    },
+    "rpc_timeout": {
+     "advanced": true,
+     "unit": "s"
+    },
+    "stale_after": {
+     "advanced": false,
+     "tooltip": "Before deciding whether a target point needs writing, ask the driver (its last RPC) for points whose last known value is older than this many seconds or unknown. Unset: rely on the target's publications and this agent's own writes only.",
+     "unit": "s"
+    }
+   }
+  },
+  "service/alias": {
+   "properties": {
+    "data_format": {
+     "title": "Data Format",
+     "type": "string"
+    },
+    "edition": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Edition"
+    },
+    "encoding": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Encoding"
+    },
+    "owner": {
+     "title": "Owner",
+     "type": "string"
+    },
+    "parameters": {
+     "additionalProperties": true,
+     "title": "Parameters",
+     "type": "object"
+    },
+    "references": {
+     "items": {},
+     "title": "References",
+     "type": "array"
+    }
+   },
+   "required": [
+    "data_format",
+    "owner",
+    "references"
+   ],
+   "title": "AliasedResource",
+   "type": "object",
+   "x-hints": {
+    "data_format": {
+     "advanced": false
+    },
+    "edition": {
+     "advanced": true
+    },
+    "encoding": {
+     "advanced": true
+    },
+    "owner": {
+     "advanced": false
+    },
+    "parameters": {
+     "advanced": true
+    },
+    "references": {
+     "advanced": false
+    }
+   }
+  },
+  "service/canonical": {
+   "properties": {
+    "data_format": {
+     "title": "Data Format",
+     "type": "string"
+    },
+    "edition": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Edition"
+    },
+    "encoding": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Encoding"
+    },
+    "owner": {
+     "title": "Owner",
+     "type": "string"
+    },
+    "parameters": {
+     "additionalProperties": true,
+     "title": "Parameters",
+     "type": "object"
+    },
+    "publication_topic": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publication Topic"
+    },
+    "rpc_topic": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Rpc Topic"
+    }
+   },
+   "required": [
+    "data_format",
+    "owner"
+   ],
+   "title": "CanonicalResource",
+   "type": "object",
+   "x-hints": {
+    "data_format": {
+     "advanced": false
+    },
+    "edition": {
+     "advanced": true
+    },
+    "encoding": {
+     "advanced": true
+    },
+    "owner": {
+     "advanced": false
+    },
+    "parameters": {
+     "advanced": true
+    },
+    "publication_topic": {
+     "advanced": true
+    },
+    "rpc_topic": {
+     "advanced": true
+    }
+   }
+  }
+ }
+}
