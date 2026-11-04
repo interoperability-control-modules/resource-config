@@ -4878,6 +4878,15 @@
    ]
   }
  },
+ "openfmb": {
+  "editions": [
+   "1.0",
+   "2.0",
+   "2.1",
+   "2.2"
+  ],
+  "latest": "2.2"
+ },
  "schemas": {
   "bus_adapter/config": {
    "$defs": {

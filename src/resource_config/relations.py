@@ -64,12 +64,14 @@ def build_model(snapshot: dict, settings, agents: list[dict] | None = None) -> d
             continue
         data = entry.get('data') if isinstance(entry.get('data'), dict) else {}
         topic = name[len('devices/'):]
-        remote = {k: v for k, v in data.items() if k not in ('registry_config', 'interval', 'polling_group', 'group', 'active',
+        remote = {k: v for k, v in data.items() if k not in ('registry_config', 'remote_config', 'interval', 'polling_group', 'group', 'active',
                                                              'publish_depth_first_all', 'publish_breadth_first_all', 'publish_depth_first_multi',
                                                              'publish_breadth_first_multi', 'publish_depth_first_single', 'publish_breadth_first_single',
                                                              'all_publish_interval', 'equipment_specific_fields', 'driver_config')}
-        if isinstance(data.get('driver_config'), dict):
-            remote = {**data['driver_config'], **{k: v for k, v in remote.items() if k in ('driver_type', 'driver_role', 'heart_beat_point')}}
+        # The driver accepts the remote's settings under driver_config or remote_config (the e2e harness and icmstack write the latter).
+        nested = data.get('driver_config') if isinstance(data.get('driver_config'), dict) else data.get('remote_config') if isinstance(data.get('remote_config'), dict) else None
+        if nested is not None:
+            remote = {**nested, **{k: v for k, v in remote.items() if k in ('driver_type', 'driver_role', 'heart_beat_point')}}
         registry_ref = data.get('registry_config')
         registry_name = registry_ref[len('config://'):] if isinstance(registry_ref, str) and registry_ref.startswith('config://') else registry_ref
         registry = entries_of(settings.driver_identity).get(registry_name) if isinstance(registry_name, str) else None
@@ -192,7 +194,9 @@ def build_model(snapshot: dict, settings, agents: list[dict] | None = None) -> d
             'resources': {'canonical': list(canonicals.values()), 'aliases': list(aliases.values())},
             'devices': list(devices.values()), 'registries': list(registries.values()), 'bridges': bridges,
             'remote_topics': remote_topics, 'buses': buses, 'formats': list(formats.values()), 'transforms': transforms,
-            'agents': agents}
+            'agents': agents,
+            # the entry names each identity holds, so the pages know what exists without asking the platform
+            'store_entries': {identity: sorted(entries) for identity, entries in identities.items()}}
 
 
 def _end(raw) -> dict:

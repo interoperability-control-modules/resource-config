@@ -108,7 +108,14 @@ def _is_number(prop: dict) -> bool:
 
 def build_catalog() -> dict:
     """Live models first, bundled schemas second; records which were used."""
-    catalog: dict[str, Any] = {'schemas': {}, 'interfaces': {}, 'source': {}}
+    catalog: dict[str, Any] = {'schemas': {}, 'interfaces': {}, 'source': {}, 'openfmb': {}}
+    try:
+        # The OpenFMB editions the service's codecs know and the one an alias gets when it names none (the newest).
+        from interoperability.codecs import openfmb as _openfmb
+        catalog['openfmb'] = {'editions': list(_openfmb.editions()), 'latest': _openfmb.latest_edition()}
+        catalog['source']['openfmb'] = 'live'
+    except Exception:
+        pass
     for (agent_type, kind), (module, name) in MODEL_SOURCES.items():
         key = f'{agent_type}/{kind}'
         model = _import(module, name)
@@ -133,6 +140,9 @@ def build_catalog() -> dict:
             catalog['source'].setdefault(key, 'bundled')
         for name, entry in stored.get('interfaces', {}).items():
             catalog['interfaces'].setdefault(name, entry)
+        if not catalog['openfmb'] and stored.get('openfmb'):
+            catalog['openfmb'] = stored['openfmb']
+            catalog['source']['openfmb'] = 'bundled'
             catalog['source'].setdefault(f'interface/{name}', 'bundled')
     return catalog
 
@@ -151,6 +161,8 @@ def dump(path: Path = BUNDLED / 'catalog.json') -> Path:
     catalog = build_catalog()
     live = {'schemas': {k: v for k, v in catalog['schemas'].items() if catalog['source'].get(k) == 'live'},
             'interfaces': {k: v for k, v in catalog['interfaces'].items() if catalog['source'].get(f'interface/{k}') == 'live'}}
+    if catalog['source'].get('openfmb') == 'live':
+        live['openfmb'] = catalog['openfmb']
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(live, indent=1, sort_keys=True), encoding='utf-8')
     return path
