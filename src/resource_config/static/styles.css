@@ -154,3 +154,11 @@ table.grid-table th{position:sticky;top:0;z-index:1}
 .ftree .dot,.tree .dot,.rtl .dot,.btree .dot,.hrow .dot{flex:none}
 
 .steps{display:flex;gap:16px;margin-bottom:10px;font-size:12px;color:var(--muted)}.steps .on{color:var(--ink);font-weight:600}
+
+/* tooltips: drawn from data-tip on hover, no browser delay */
+.tip{position:relative;cursor:help}.tip::after{content:attr(data-tip);position:absolute;left:0;top:100%;margin-top:5px;z-index:60;background:var(--ink);color:#fff;font-size:12px;font-weight:400;line-height:1.35;padding:6px 9px;border-radius:4px;width:max-content;max-width:320px;white-space:normal;text-transform:none;letter-spacing:0;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .08s}.tip:hover::after{opacity:1;visibility:visible}
+/* segment chips typed as a UAI */
+.segs{min-height:30px;padding:3px 4px;gap:4px}.segs input.seg{border:1px solid var(--line);border-radius:4px;padding:1px 6px;background:#fff;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:20px;min-width:3ch;outline:none}.segs input.seg:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--sel)}.segs .c.add{cursor:pointer;line-height:22px;padding:0 7px}
+.btn.dis{opacity:.45;pointer-events:none}
+.segs .segw{display:inline-flex;align-items:center}.segs.slash .segw + .segw::before{content:attr(data-sep);content:'/';color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace;margin:0 1px 0 -1px}
+.btn:focus-visible{outline:2px solid var(--acc);outline-offset:1px}

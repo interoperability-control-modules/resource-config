@@ -1,8 +1,8 @@
 // Devices: a tree over the topic segments; one device card with Device, Polling and publishing, Remote config and Registry.
 import { api } from '../api.js';
-import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog } from '../ui.js';
+import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog, segmentsInput } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
-import { rawEditor, menu, healthCard, checksCard, consumersCard } from './common.js';
+import { rawEditor, menu, healthCard, checksCard, consumersCard, deleteDialog, dependentsOf, removeMapping } from './common.js';
 
 export const title = 'Devices';
 export const railBadges = (s) => [h('span', { class: 'pill n' }, String(s.model.devices.length))];
@@ -47,7 +47,7 @@ function renderDevice(main, ctx, d, editing) {
   const remoteId = remoteIdOf(d);
   const groupDefaults = ((state.model.agents || []).find((a) => a.identity === 'platform.driver') || {});
   const deviceBody = kv([
-    ['Topic', editing ? input(d.topic, { mono: true, width: '260px', onChange: (v) => (draft.topic = v) }) : h('span', { class: 'mono' }, d.topic), 'Free-form; the entry name, the rpc topic of the device\'s resource, and with devices/ in front the UAI of the resource the device publishes.'],
+    ['Topic', editing ? segmentsInput(d.topic, { separator: '/', onChange: (v) => (draft.topic = v.join('/')) }) : h('span', { class: 'mono' }, d.topic), 'Free-form; the entry name, the rpc topic of the device\'s resource, and with devices/ in front the UAI of the resource the device publishes.'],
     ['Driver type', editing ? select(d.driver_type, Object.keys(catalog.interfaces).map((i) => [i, i]), { onChange: (v) => (remote.driver_type = v), width: '200px' }) : d.driver_type || '—'],
     ['Role', editing ? radios('role', d.driver_role === 'client' ? 'client' : 'server', [['client', 'client (master)'], ['server', `server (${serverWord(d.driver_type)})`]], (v) => (remote.driver_role = v === 'client' ? 'client' : serverWord(d.driver_type))) : roleLabel(d.driver_role, d.driver_type)],
     ['Active', editing ? checkbox(d.active !== false, (v) => (draft.config.active = v)) : d.active === false ? 'no' : 'yes', 'Inactive devices are neither polled nor published; their configuration is kept.']]);
@@ -153,14 +153,16 @@ async function saveDevice(d, draft) {
   } catch (e) { toast(e.message, 'err'); }
 }
 function deleteDevice(d) {
-  const dependents = [d.resource, ...(d.resource ? (state.model.resources.canonical.find((c) => c.topic === d.resource) || { consumers: [] }).consumers.map((c) => c.name || c.identity) : [])].filter(Boolean);
-  dialog({ title: `Delete devices/${d.topic}?`, width: 520, body: h('div', {}, dependents.length ? h('div', { class: 'warn' }, `Depends on it: ${dependents.join(', ')}. The device entry is deleted; the resource and its consumers stay and must be removed on their pages.`) : note('Nothing depends on this device.'), note(` The registry ${d.registry || ''} is kept${d.registry_shared_with.length ? ' (shared)' : ''}.`)),
-    actions: [{ label: 'Cancel', onClick: (c) => c() }, { label: 'Delete', primary: true, onClick: async (close) => { try { await api.deleteEntry('platform.driver', d.entry); close(); toast('deleted', 'ok'); await refreshModel(false); navigate('devices'); } catch (e) { toast(e.message, 'err'); } } }] });
+  const resource = d.resource ? state.model.resources.canonical.find((c) => c.topic === d.resource) : null;
+  const dependents = resource ? [{ kind: 'resource', label: resource.topic, open: () => navigate('resources', { uai: resource.topic }), remove: () => removeMapping(resource.topic),
+    keepNote: 'its publication topic has no device behind it any more' }, ...dependentsOf(resource)] : [];
+  deleteDialog({ label: `devices/${d.topic}`, dependents, extra: note(`The registry ${d.registry || ''} is kept${d.registry_shared_with.length ? ' (shared with ' + d.registry_shared_with.join(', ') + ')' : '; delete it from the Registries list if nothing else uses it'}.`),
+    onDelete: async () => { await api.deleteEntry('platform.driver', d.entry); toast('deleted', 'ok'); await refreshModel(false); navigate('devices'); } });
 }
 function addDevice() {
   const form = { topic: '', driver_type: Object.keys((state.catalog || {}).interfaces || {})[0] || 'modbus', registry: '' };
   dialog({ title: 'Add a device', body: h('div', {}, h('div', { class: 'grid kv1' },
-    h('span', { class: 'k' }, 'Topic'), input('', { mono: true, width: '100%', placeholder: 'site1/feeder1/pv_inverter', onChange: (v) => (form.topic = v) }),
+    h('span', { class: 'k' }, 'Topic'), segmentsInput([], { separator: '/', onChange: (v) => (form.topic = v.join('/')) }),
     h('span', { class: 'k' }, 'Driver type'), select(form.driver_type, Object.keys((state.catalog || {}).interfaces || {}).map((i) => [i, i]), { onChange: (v) => (form.driver_type = v), width: '200px' }),
     h('span', { class: 'k' }, 'Registry'), select('', (state.model.registries || []).map((r) => [r.name, r.name.replace('registry_configs/', '')]), { blank: 'new, named after the topic', onChange: (v) => (form.registry = v), width: '320px' })),
     note('Creates the device entry (and an empty registry when none is chosen). Discover, which scans a unit and generates the registry, format and resource, is not wired to a generator yet.')),

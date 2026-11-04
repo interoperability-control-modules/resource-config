@@ -1,8 +1,8 @@
 // Bridges: device bridges of the Resource Bridge as a source tree; remote topics of the bus adapter grouped by bus.
 import { api } from '../api.js';
-import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, steps, meter, toast, dialog, select, input, radios, checkbox } from '../ui.js';
+import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, steps, meter, toast, dialog, select, input, radios, checkbox, labelled } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
-import { rawEditor, menu, checksCard, healthCard, chainReport, activityCard } from './common.js';
+import { rawEditor, menu, checksCard, healthCard, chainReport, activityCard, settingsDialog } from './common.js';
 
 export const title = 'Bridges';
 export const railBadges = (s) => [h('span', { class: 'pill n' }, String(s.model.bridges.length + s.model.remote_topics.length))];
@@ -18,7 +18,7 @@ export function render({ side, main, ctx, params }) {
 }
 function tree(m, bridge, remote) {
   const el = h('div', {}, h('h3', { class: 'ph' }, 'Bridges', h('span', { class: 'sp' }), collapseHandle('side')));
-  el.append(h('div', { class: 'grp' }, 'Device bridges ', h('span', { class: 'n' }, String(m.bridges.length)), h('span', { class: 'sp', style: { flex: 1 } }), h('span', { class: 'hd', onClick: () => rawEditor('platform.resource_bridge', 'config') }, '⚙ Resource Bridge')));
+  el.append(h('div', { class: 'grp' }, 'Device bridges ', h('span', { class: 'n' }, String(m.bridges.length)), h('span', { class: 'sp', style: { flex: 1 } }), h('span', { class: 'hd', onClick: () => settingsDialog('platform.resource_bridge') }, '⚙ Resource Bridge')));
   const bySource = new Map();
   for (const b of m.bridges) { const k = b.source.uai.join('/') + (b.source.bus ? '|bus' : ''); if (!bySource.has(k)) bySource.set(k, []); bySource.get(k).push(b); }
   const bt = h('div', { class: 'btree' });
@@ -27,7 +27,7 @@ function tree(m, bridge, remote) {
     list.forEach((b, i) => box.append(h('div', { class: `tg${i === list.length - 1 ? ' last' : ''}${bridge === b ? ' on' : ''}`, style: { cursor: 'pointer' }, onClick: () => navigate('bridges', { bridge: b.name }) }, h('span', { class: 'ic' }, '→'), h('span', { class: 'ic' }, b.target.bus ? '◎' : '▣'), uai(b.target.uai))));
     bt.append(box); }
   el.append(bt, h('div', { class: 'bar', style: { marginTop: '4px' } }, btn('+ Device bridge', addBridge)));
-  el.append(h('div', { class: 'grp', style: { marginTop: '14px' } }, 'Remote topics ', h('span', { class: 'n' }, String(m.remote_topics.length)), h('span', { class: 'sp', style: { flex: 1 } }), h('span', { class: 'hd', onClick: () => rawEditor('platform.bus_adapter', 'config') }, '⚙ bus adapter')));
+  el.append(h('div', { class: 'grp', style: { marginTop: '14px' } }, 'Remote topics ', h('span', { class: 'n' }, String(m.remote_topics.length)), h('span', { class: 'sp', style: { flex: 1 } }), h('span', { class: 'hd', onClick: () => settingsDialog('platform.bus_adapter') }, '⚙ bus adapter')));
   const byBus = new Map();
   for (const t of m.remote_topics) { if (!byBus.has(t.bus)) byBus.set(t.bus, []); byBus.get(t.bus).push(t); }
   const rtl = h('div', { class: 'rtl' });
@@ -43,7 +43,11 @@ function renderBridge(main, ctx, b) {
   const sDev = sRes && sRes.kind === 'canonical' && sRes.source && sRes.source.kind === 'device' ? m.devices.find((d) => d.topic === sRes.source.device) : null;
   const tDev = tRes && tRes.kind === 'canonical' && tRes.source && tRes.source.kind === 'device' ? m.devices.find((d) => d.topic === tRes.source.device) : null;
   const chainBox = h('div', {}, note('resolving the write chain…'));
-  if (sRes && tRes) api.resolve(b.target.uai, sRes.format, 'write').then((r) => chainBox.replaceChildren(steps(r.path || []), h('div', { class: 'row', style: { marginTop: '8px' } }, h('div', { style: { flex: 1 } }, meter(r.retention)), note(`retention ${r.retention != null ? Math.round(r.retention * 100) + ' %' : '—'}`))))
+  // A bus target is an alias the bridge publishes: the chain is the canonical's format to the alias's own format (read
+  // direction, so the service checks the protobuf codec against the alias format). A device target is written in the
+  // source's format (write direction).
+  const chain = () => (b.target.bus ? api.resolve(b.target.uai, tRes.format, 'read') : api.resolve(b.target.uai, sRes.format, 'write'));
+  if (sRes && tRes) chain().then((r) => chainBox.replaceChildren(steps(r.path || []), h('div', { class: 'row', style: { marginTop: '8px' } }, h('div', { style: { flex: 1 } }, meter(r.retention)), note(`retention ${r.retention != null ? Math.round(r.retention * 100) + ' %' : '—'}`))))
     .catch((e) => chainBox.replaceChildren(h('span', { class: 'warn' }, `no chain: ${e.message} `), btn('Create transform ▸', () => navigate('transforms', { input: sRes.format, output: tRes.format, new: 1 }))));
   else chainBox.replaceChildren(h('span', { class: 'warn' }, 'an end does not resolve to a resource'));
   const endKv = (end, res, dev, isSource) => kv([['UAI', uai(end.uai)], ['Kind', end.bus ? 'bus topic' : 'device'], ['Format', res ? res.format : h('span', { class: 'warn' }, 'does not resolve')],
@@ -51,7 +55,7 @@ function renderBridge(main, ctx, b) {
     isSource ? null : ['Write policy', b.write_unchanged ? 'write every point' : 'changes only', 'By default only changed values are written. write_unchanged writes every point on every message.']].filter(Boolean));
   main.append(card({ title: h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, uai(b.source.uai, { box: false }), h('span', { style: { color: 'var(--muted)', fontSize: '18px' } }, '→'), uai(b.target.uai, { box: false })), badge: kind('device bridge'),
     boxes: [mb('chain', sRes && tRes ? `${sRes.format} → … → ${tRes.format}` : '—'), mb('enabled', b.enabled ? 'yes' : 'no')],
-    buttons: [btn(b.enabled ? 'Disable' : 'Enable', () => toggleBridge(b)), btn('Raw JSON', () => rawEditor('platform.resource_bridge', 'config')), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }, { header: 'This bridge' }, { label: 'Delete…', danger: true, onClick: () => deleteBridge(b) }]))],
+    buttons: [btn('Edit', () => bridgeDialog(b)), btn(b.enabled ? 'Disable' : 'Enable', () => toggleBridge(b)), btn('Raw JSON', () => rawEditor('platform.resource_bridge', 'config')), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }, { header: 'This bridge' }, { label: 'Delete…', danger: true, onClick: () => deleteBridge(b) }]))],
     sections: [section('Ends', h('div', { class: 'two', style: { gap: '24px' } }, h('div', {}, h('h5', { style: { margin: '0 0 8px' } }, 'Source · read from'), endKv(b.source, sRes, sDev, true)), h('div', {}, h('h5', { style: { margin: '0 0 8px' } }, 'Target · written to'), endKv(b.target, tRes, tDev, false)))),
       section('How this resolves', chainBox, { note: 'write', actions: sRes && tRes ? [btn('Chain report ▸', () => chainReport(sRes.format, tRes.format))] : [] }),
       section('Delivery policy', () => note('reserved for the resource library\'s models (each · complete · merge · interval · trigger)'), { collapsed: true, note: 'not yet' })] }));
@@ -65,38 +69,55 @@ function renderBridge(main, ctx, b) {
 function renderRemote(main, ctx, t) {
   const alias = state.model.resources.aliases.find((a) => a.topic === t.alias || a.topic === t.topic);
   main.append(card({ title: h('span', { class: 'mono', style: { fontSize: '15px', fontWeight: 600 } }, t.topic), badge: kind('remote topic', true), boxes: [mb('bus', `${t.bus} · ${t.bus_type || ''}`), mb('direction', t.direction)],
-    buttons: [btn('Raw JSON', () => rawEditor('platform.bus_adapter', 'config')), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }, { header: 'This topic' }, { label: 'Delete…', danger: true, onClick: () => deleteRemote(t) }]))],
+    buttons: [btn('Edit', () => remoteDialog(t)), btn('Raw JSON', () => rawEditor('platform.bus_adapter', 'config')), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }, { header: 'This topic' }, { label: 'Delete…', danger: true, onClick: () => deleteRemote(t) }]))],
     sections: [section('Relay', kv([['Bus', `${t.bus} · ${t.bus_type || ''}`], ['Direction', t.direction === 'inbound' ? 'inbound · remote → local' : 'outbound · local → remote'], ['Remote topic', h('span', { class: 'mono' }, t.topic)], ['Local topic', h('span', { class: 'mono' }, t.topic, ' ', note('· the same, with origin headers'))], ['Strict', t.direction === 'inbound' ? 'yes · no longest-prefix fallback' : '—']]), { note: 'the bus adapter copies the topic between the buses' }),
       section('Alias this topic names', alias ? h('div', { class: 'subcard' }, h('span', { class: 'hol' }), uai(alias.uai, { box: false, onClick: () => navigate('resources', { alias: alias.topic }) }), kind('alias', true), note(`format ${alias.format} · wire ${alias.encoding}${alias.edition ? ' · edition ' + alias.edition : ''}`), h('span', { class: 'sp' }), btn('Open alias ▸', () => navigate('resources', { alias: alias.topic })))
         : h('div', { class: 'warn' }, 'no alias is registered under this topic: the adapter cannot decode or encode it'), { note: 'what the payload is decoded with · edited on Resources' })] }));
   if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })), checksCard([[alias ? 'ok' : 'err', alias ? 'topic names a registered alias' : 'topic names no alias'], [t.wildcard ? 'warn' : 'ok', t.wildcard ? 'wildcard: every topic a remote publishes under it reaches the adapter' : 'exact topic']]),
-    h('div', { class: 'card' }, h('h4', {}, 'Bus adapter'), h('div', { class: 'hrow' }, h('span', {}, 'buses'), h('span', {}, `${state.model.buses.length} · ${state.model.buses.map((b) => b.name).join(', ')}`)), h('div', { class: 'bar', style: { marginTop: '6px' } }, btn('Adapter settings ▸', () => rawEditor('platform.bus_adapter', 'config')))));
+    h('div', { class: 'card' }, h('h4', {}, 'Bus adapter'), h('div', { class: 'hrow' }, h('span', {}, 'buses'), h('span', {}, `${state.model.buses.length} · ${state.model.buses.map((b) => b.name).join(', ')}`)), h('div', { class: 'bar', style: { marginTop: '6px' } }, btn('Adapter settings ▸', () => settingsDialog('platform.bus_adapter')))));
 }
 async function toggleBridge(b) { await mutateBridges((list) => list.map((x) => (x === b.raw || sameBridge(x, b) ? { ...x, enabled: !b.enabled } : x))); }
 async function deleteBridge(b) { await mutateBridges((list) => list.filter((x) => !sameBridge(x, b))); navigate('bridges'); }
 const sameBridge = (raw, b) => JSON.stringify(raw) === JSON.stringify(b.raw);
 async function mutateBridges(fn) { try { const entry = await api.entry('platform.resource_bridge', 'config').catch(() => ({ data: { bridges: [] } })); const data = { ...(entry.data || {}) }; data.bridges = fn(data.bridges || []); await api.putEntry('platform.resource_bridge', 'config', { type: 'json', data }); toast('saved', 'ok'); await refreshModel(false); } catch (e) { toast(e.message, 'err'); } }
-function addBridge() {
-  const m = state.model; const form = { source: '', sourceBus: false, target: '', targetBus: false, write_unchanged: false };
+// Add or edit a device bridge: the same form both ways, prefilled when editing.
+function bridgeDialog(existing = null) {
+  const m = state.model;
+  const endOf = (end) => (Array.isArray(end) ? { topic: end.join('/'), bus: false } : { topic: (end.uai || []).join('/'), bus: !!end.bus });
+  const s0 = existing ? endOf(existing.raw.source) : { topic: '', bus: false }, t0 = existing ? endOf(existing.raw.target) : { topic: '', bus: false };
+  const form = { source: s0.topic, sourceBus: s0.bus, target: t0.topic, targetBus: t0.bus, write_unchanged: !!(existing && existing.raw.write_unchanged),
+    points: existing && existing.raw.points ? existing.raw.points.join(', ') : '' };
   const options = (bus) => (bus ? m.resources.aliases : m.resources.canonical).map((r) => [r.topic, r.topic]);
-  const sourceSel = select('', options(false), { blank: 'choose…', onChange: (v) => (form.source = v), width: '100%' }), targetSel = select('', options(false), { blank: 'choose…', onChange: (v) => (form.target = v), width: '100%' });
+  const sourceSel = select(form.source, options(form.sourceBus), { blank: 'choose…', onChange: (v) => (form.source = v), width: '100%' }), targetSel = select(form.target, options(form.targetBus), { blank: 'choose…', onChange: (v) => (form.target = v), width: '100%' });
   const rebuild = (sel, bus, key) => { const cur = form[key]; sel.replaceChildren(h('option', { value: '' }, 'choose…'), ...options(bus).map(([v, l]) => h('option', { value: v, selected: v === cur }, l))); };
-  dialog({ title: 'Add a device bridge', width: 720, body: h('div', { class: 'two', style: { gap: '24px' } },
-    h('div', {}, h('h5', {}, 'Source · read from'), radios('sk', 'device', [['device', 'device'], ['bus', 'bus topic']], (v) => { form.sourceBus = v === 'bus'; rebuild(sourceSel, form.sourceBus, 'source'); }), sourceSel),
-    h('div', {}, h('h5', {}, 'Target · written to'), radios('tk', 'device', [['device', 'device'], ['bus', 'bus topic']], (v) => { form.targetBus = v === 'bus'; rebuild(targetSel, form.targetBus, 'target'); }), targetSel, h('label', { class: 'chk', style: { marginTop: '8px' } }, checkbox(false, (v) => (form.write_unchanged = v)), ' write unchanged'))),
+  dialog({ title: existing ? 'Edit the device bridge' : 'Add a device bridge', width: 720, body: h('div', { class: 'two', style: { gap: '24px' } },
+    h('div', {}, h('h5', {}, 'Source · read from'), radios('sk', form.sourceBus ? 'bus' : 'device', [['device', 'device'], ['bus', 'bus topic']], (v) => { form.sourceBus = v === 'bus'; rebuild(sourceSel, form.sourceBus, 'source'); }), sourceSel),
+    h('div', {}, h('h5', {}, 'Target · written to'), radios('tk', form.targetBus ? 'bus' : 'device', [['device', 'device'], ['bus', 'bus topic']], (v) => { form.targetBus = v === 'bus'; rebuild(targetSel, form.targetBus, 'target'); }), targetSel,
+      h('label', { class: 'chk tip', 'data-tip': 'By default only changed values are written; write unchanged writes every point on every message.', style: { marginTop: '8px' } }, checkbox(form.write_unchanged, (v) => (form.write_unchanged = v)), ' write unchanged'),
+      h('div', { style: { marginTop: '8px' } }, labelled('Points', 'Only these source points are carried (comma-separated point names); empty carries every point the chain maps. A control bridge usually names just the setpoint, its enable and scale factor.'),
+        input(form.points, { placeholder: 'empty: all points', width: '100%', mono: true, onChange: (v) => (form.points = v) })))),
     actions: [{ label: 'Cancel', onClick: (c) => c() }, { label: 'Save', primary: true, onClick: async (close) => { if (!form.source || !form.target) return toast('both ends are required', 'err');
-      await mutateBridges((list) => [...list, { source: form.sourceBus ? { uai: form.source.split('/'), bus: true } : form.source.split('/'), target: form.targetBus ? { uai: form.target.split('/'), bus: true } : form.target.split('/'), ...(form.write_unchanged ? { write_unchanged: true } : {}) }]); close(); } }] });
+      const raw = { ...(existing ? existing.raw : {}), source: form.sourceBus ? { uai: form.source.split('/'), bus: true } : form.source.split('/'), target: form.targetBus ? { uai: form.target.split('/'), bus: true } : form.target.split('/') };
+      if (form.write_unchanged) raw.write_unchanged = true; else delete raw.write_unchanged;
+      const points = form.points.split(',').map((p) => p.trim()).filter(Boolean); if (points.length) raw.points = points; else delete raw.points;
+      await mutateBridges((list) => (existing ? list.map((x) => (sameBridge(x, existing) ? raw : x)) : [...list, raw])); close(); } }] });
 }
-function addRemote() {
-  const m = state.model; const form = { bus: (m.buses[0] || {}).name || '', direction: 'outbound', topic: '' };
-  dialog({ title: 'Add a remote topic', width: 640, body: h('div', { class: 'grid kv1' }, h('span', { class: 'k' }, 'Bus'), select(form.bus, m.buses.map((b) => [b.name, `${b.name} · ${b.bus_type || ''}`]), { onChange: (v) => (form.bus = v), width: '260px' }),
-    h('span', { class: 'k' }, 'Direction'), radios('rd', 'outbound', [['outbound', 'outbound', 'local → remote'], ['inbound', 'inbound', 'remote → local']], (v) => (form.direction = v)),
-    h('span', { class: 'k' }, 'Topic'), select('', m.resources.aliases.map((a) => [a.topic, a.topic]), { blank: 'an alias UAI…', onChange: (v) => (form.topic = v), width: '100%' })),
+const addBridge = () => bridgeDialog();
+
+// Add or edit a remote topic: an alias UAI relayed on a bus in one direction.
+function remoteDialog(existing = null) {
+  const m = state.model; const form = { bus: existing ? existing.bus : (m.buses[0] || {}).name || '', direction: existing ? existing.direction : 'outbound', topic: existing ? existing.topic : '' };
+  dialog({ title: existing ? `Edit remote topic ${existing.topic}` : 'Add a remote topic', width: 640, body: h('div', { class: 'grid kv1' }, labelled('Bus', 'The bus adapter connection that carries the topic.'), select(form.bus, m.buses.map((b) => [b.name, `${b.name} · ${b.bus_type || ''}`]), { onChange: (v) => (form.bus = v), width: '260px' }),
+    labelled('Direction', 'Outbound publishes the local alias to the remote bus; inbound relays what the remote publishes.'), radios('rd', form.direction, [['outbound', 'outbound', 'local → remote'], ['inbound', 'inbound', 'remote → local']], (v) => (form.direction = v)),
+    labelled('Topic', 'The alias UAI, which is also the remote topic; the alias says how the payload is encoded.'), select(form.topic, m.resources.aliases.map((a) => [a.topic, a.topic]), { blank: 'an alias UAI…', onChange: (v) => (form.topic = v), width: '100%' })),
     actions: [{ label: 'Cancel', onClick: (c) => c() }, { label: 'Save', primary: true, onClick: async (close) => { if (!form.topic || !form.bus) return toast('bus and topic are required', 'err');
-      try { const entry = await api.entry('platform.bus_adapter', 'config'); const data = { ...entry.data }; data.adapters = (data.adapters || []).map((a) => ({ ...a })); const adapter = data.adapters.find((a) => (a.name || a.host) === form.bus); if (!adapter) throw new Error('bus not found');
+      try { const entry = await api.entry('platform.bus_adapter', 'config'); const data = { ...entry.data }; data.adapters = (data.adapters || []).map((a) => ({ ...a }));
+        if (existing) { const old = data.adapters.find((a) => (a.name || a.host) === existing.bus); const oldKey = existing.direction === 'outbound' ? 'local_subscriptions' : 'remote_subscriptions'; if (old) old[oldKey] = (old[oldKey] || []).filter((t) => t !== existing.topic); }
+        const adapter = data.adapters.find((a) => (a.name || a.host) === form.bus); if (!adapter) throw new Error('bus not found');
         const key = form.direction === 'outbound' ? 'local_subscriptions' : 'remote_subscriptions'; adapter[key] = [...new Set([...(adapter[key] || []), form.topic])];
         await api.putEntry('platform.bus_adapter', 'config', { type: 'json', data }); close(); toast('saved', 'ok'); await refreshModel(false); navigate('bridges', { topic: form.topic }); } catch (e) { toast(e.message, 'err'); } } }] });
 }
+const addRemote = () => remoteDialog();
 async function deleteRemote(t) {
   try { const entry = await api.entry('platform.bus_adapter', 'config'); const data = { ...entry.data }; data.adapters = (data.adapters || []).map((a) => ({ ...a, local_subscriptions: (a.local_subscriptions || []).filter((x) => !(x === t.topic && t.direction === 'outbound')), remote_subscriptions: (a.remote_subscriptions || []).filter((x) => !(x === t.topic && t.direction === 'inbound')) }));
     await api.putEntry('platform.bus_adapter', 'config', { type: 'json', data }); toast('deleted', 'ok'); await refreshModel(false); navigate('bridges'); } catch (e) { toast(e.message, 'err'); }

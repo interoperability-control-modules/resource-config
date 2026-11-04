@@ -37,10 +37,14 @@ export const hollow = (status = 'ok') => h('span', { class: `hol${status === 'ok
 export const tag = (label) => h('span', { class: 'tag' }, label);
 export const kind = (label, alias = false) => h('span', { class: `kind${alias ? ' alias' : ''}` }, label);
 export const note = (...children) => h('span', { class: 'note' }, ...children);
+// Buttons are spans styled as buttons; tabindex and the key handler make them reachable and usable from the keyboard.
 export const btn = (label, onClick, { primary = false, small = true, title } = {}) =>
-  h('span', { class: `btn${small ? ' sm' : ''}${primary ? ' pri' : ''}`, onClick, title }, label);
+  h('span', { class: `btn${small ? ' sm' : ''}${primary ? ' pri' : ''}`, onClick, title, tabindex: '0', role: 'button',
+    onKeydown: (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.currentTarget.classList.contains('dis')) { e.preventDefault(); e.currentTarget.click(); } } }, label);
 export const mb = (label, value) => h('span', { class: 'mb' }, label + ' ', h('b', {}, value));
-export const info = (tip) => h('span', { class: 'note', title: tip }, 'ⓘ');
+// Tooltips are drawn by CSS from data-tip (see .tip in styles.css), so they show on hover without the browser's delay.
+export const info = (tip) => h('span', { class: 'tip note', 'data-tip': tip }, 'ⓘ');
+export const labelled = (label, tip) => (tip ? h('span', { class: 'k tip', 'data-tip': tip }, label, ' ', h('span', { class: 'note' }, 'ⓘ')) : h('span', { class: 'k' }, label));
 
 // ---- the card: header with identity, badges, boxes and buttons; sections; collapsed rows.
 export function card({ title, badge, boxes = [], buttons = [], sections = [] }) {
@@ -63,13 +67,13 @@ export function section(title, body, { note: n, actions = [], collapsed = null, 
     row.append(head, content);
     return row;
   }
-  return h('div', { class: 'rsec' }, h('h5', {}, title, n ? h('span', { class: 'n' }, ' · ', n) : null, h('span', { class: 'sp' }), ...actions), body);
+  return h('div', { class: 'rsec' }, h('h5', {}, title, n ? h('span', { class: 'n' }, ' · ', n) : null, h('span', { class: 'sp' }), ...actions), typeof body === 'function' ? body() : body);
 }
 export function kv(rows, cols = 1) {
   const el = h('div', { class: `grid kv${cols}` });
   for (const [label, value, tip] of rows) {
     if (value === undefined) continue;
-    el.append(h('span', { class: 'k' }, label, tip ? [' ', info(tip)] : null), h('span', { class: 'v' }, value));
+    el.append(labelled(label, tip), h('span', { class: 'v' }, value));
   }
   return el;
 }
@@ -86,7 +90,15 @@ export function dialog({ title, body, actions = [], width = 760 }) {
     h('div', { class: 'bar', style: { padding: '0 16px 14px' } }, h('span', { class: 'sp' }), ...actions.map((a) => btn(a.label, () => a.onClick(close), { primary: a.primary, small: false }))));
   overlay.append(box);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  // Keyboard: Enter in a field runs the primary action (a textarea keeps its newline), Escape closes.
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    if (e.key !== 'Enter' || e.target.tagName === 'TEXTAREA' || e.target.closest('.btn') || e.altKey || e.ctrlKey || e.metaKey) return;
+    const primary = box.querySelector('.btn.pri:not(.dis)');
+    if (primary) { e.preventDefault(); e.target.blur(); primary.click(); }    // blur first so a pending change event lands in the form
+  });
   document.body.append(overlay);
+  setTimeout(() => { const first = box.querySelector('input:not([type=checkbox]):not([type=radio]), select, textarea'); if (first) first.focus(); }, 0);
   return close;
 }
 export function toast(message, level = '') {
@@ -105,6 +117,52 @@ export function input(value, { type = 'text', placeholder, width, onChange, mono
     style: width ? { width } : undefined });
   el.addEventListener('change', () => onChange && onChange(num && el.value !== '' ? Number(el.value) : el.value));
   return el;
+}
+// A UAI or topic typed as segments: one chip per segment. "/" or "," (or Tab on a filled chip) starts the
+// next segment, Backspace on an empty chip removes it, a pasted "a/b/c" is split, and "+" adds a segment.
+export function segmentsInput(initial, { onChange, placeholder = 'segment', separator = '' } = {}) {
+  // Each chip sits in a wrapper so CSS can draw the separator (a device topic shows its slashes) between chips.
+  const box = h('span', { class: `uaibox segs${separator ? ' slash' : ''}`, 'data-sep': separator || undefined });
+  const add = h('span', { class: 'c add', title: 'add a segment', onClick: () => focusChip(newChip('', add)) }, '+');
+  box.append(add);
+  const value = () => [...box.querySelectorAll('input.seg')].map((i) => i.value.trim()).filter(Boolean);
+  const changed = () => onChange && onChange(value());
+  // border-box: the padding and border (14px) come out of the width, so they are added to the text's ch count
+  const fit = (el) => { el.style.width = `calc(${Math.max(el.value.length, el.placeholder.length, 1) + 1}ch + 14px)`; };
+  const focusChip = (el) => { el.focus(); return el; };
+  function newChip(text, before) {
+    const el = h('input', { class: 'seg', value: text, placeholder, spellcheck: false });
+    fit(el);
+    el.addEventListener('input', () => {
+      if (/[/,]/.test(el.value)) {    // a separator typed or pasted: split here, the remainder goes to new chips
+        const parts = el.value.split(/[/,]/);
+        el.value = parts.shift().trim(); fit(el);
+        let last = el;
+        for (const part of parts) last = newChip(part.trim(), last.parentNode.nextSibling);
+        focusChip(last);
+      } else fit(el);
+      changed();
+    });
+    el.addEventListener('keydown', (e) => {
+      const chips = [...box.querySelectorAll('input.seg')], i = chips.indexOf(el);
+      if (e.key === 'Tab' && !e.shiftKey && el.value.trim() && i === chips.length - 1) { e.preventDefault(); focusChip(newChip('', add)); }
+      else if (e.key === 'Backspace' && !el.value && chips.length > 1) {
+        e.preventDefault();
+        const next = chips[i - 1] || chips[i + 1];
+        focusChip(next); next.setSelectionRange(next.value.length, next.value.length);    // focus first: removing the focused element sends focus to body
+        el.parentNode.remove(); changed();
+      }
+      else if (e.key === 'ArrowLeft' && el.selectionStart === 0 && chips[i - 1]) focusChip(chips[i - 1]);
+      else if (e.key === 'ArrowRight' && el.selectionStart === el.value.length && chips[i + 1]) focusChip(chips[i + 1]);
+    });
+    el.addEventListener('blur', () => { const chips = box.querySelectorAll('input.seg'); if (!el.value.trim() && chips.length > 1) { el.parentNode.remove(); changed(); } });
+    box.insertBefore(h('span', { class: 'segw' }, el), before || add);
+    return el;
+  }
+  const segments = Array.isArray(initial) ? initial : String(initial || '').split('/').filter(Boolean);
+  for (const seg of segments.length ? segments : ['']) newChip(seg);
+  box.value = value;
+  return box;
 }
 export function select(value, options, { onChange, width, blank } = {}) {
   const el = h('select', { class: 'in', style: width ? { width } : undefined });
@@ -144,7 +202,7 @@ export function schemaForm(schema, value, { onChange, hide = [], groups = null, 
     for (const [name, prop] of entries) {
       const hint = hints[name] || {};
       const control = controlFor(name, prop, defs, state[name], hint, defaults[name], (v) => { state[name] = v; onChange && onChange(name, v, state); });
-      const label = h('span', { class: 'k' }, prettyName(name), hint.tooltip ? [' ', info(hint.tooltip)] : null);
+      const label = labelled(prettyName(name), hint.tooltip);
       const matches = (v, actual) => (Array.isArray(v) ? v.map(String).includes(actual) : String(v) === actual);
       const show = hint.show_when ? () => Object.entries(hint.show_when).every(([k, v]) => matches(v, String(state[k] ?? defaults[k] ?? ''))) : null;
       const row = [label, h('span', { class: 'v', style: { display: 'flex', alignItems: 'center', gap: '6px' } }, control, hint.unit ? note(hint.unit) : null)];
@@ -158,7 +216,8 @@ export function schemaForm(schema, value, { onChange, hide = [], groups = null, 
   container.append(byGroup.size > 1 ? h('div', { class: 'two', style: { gap: '24px', alignItems: 'start' } }, ...groupsEls) : groupsEls[0] || h('div', {}));
   if (advanced.length) {
     const changed = advanced.filter(([name]) => state[name] !== undefined && JSON.stringify(state[name]) !== JSON.stringify(props[name].default)).length;
-    container.append(section('Advanced', () => rowsFor(advanced), { collapsed: true, note: `${advanced.length} fields, ${changed ? changed + ' not at their defaults' : 'all at their defaults'}` }));
+    // Open when nothing else is shown (a model whose every field is advanced), so the form is not a single closed row.
+    container.append(section('Advanced', () => rowsFor(advanced), { collapsed: true, open: visible.length === 0, note: `${advanced.length} fields, ${changed ? changed + ' not at their defaults' : 'all at their defaults'}` }));
   }
   container.getValue = () => state;
   container.addEventListener('change', () => container.dispatchEvent(new CustomEvent('rc:change')));
@@ -177,7 +236,8 @@ function controlFor(name, prop, defs, value, hint, placeholderDefault, onChange)
     area.addEventListener('change', () => { try { onChange(area.value.trim() ? JSON.parse(area.value) : null); area.classList.remove('errrow'); } catch { area.classList.add('errrow'); } });
     return area;
   }
-  return input(value ?? '', { placeholder: ph, width: '260px', onChange: (v) => onChange(v === '' ? null : v) });
+  const secret = /password|secret|token/i.test(name);
+  return input(value ?? '', { type: secret ? 'password' : 'text', placeholder: ph, width: '260px', onChange: (v) => onChange(v === '' ? null : v) });
 }
 function resolveProp(prop, defs) {
   if (prop.$ref && prop.$ref.startsWith('#/$defs/')) return { ...defs[prop.$ref.slice(8)], ...prop, $ref: undefined };
