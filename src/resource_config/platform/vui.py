@@ -102,9 +102,12 @@ class VUIClient:
         installed = await self._request('GET', self._p('/agents'), params={'agent-state': 'installed', 'include-hidden': 'true'})
         self._raise_for(installed, 'list agents')
         identities = list(installed.json().get('links', {}))
-        status = await self._request('GET', self._p('/agents/-/status'))
-        statuses = status.json() if status.status_code == 200 else {}
-        health_response = await self._request('GET', self._p('/agents/-/health'))
+        # The wildcard identity acts on a selection and the web service refuses one without a tag or regex filter;
+        # regex=. selects every installed agent.
+        status = await self._request('GET', self._p('/agents/-/status'), params={'regex': '.'})
+        self._raise_for(status, 'agent status')
+        statuses = status.json()
+        health_response = await self._request('GET', self._p('/agents/-/health'), params={'regex': '.'})
         health = health_response.json() if health_response.status_code == 200 else {}
         agents = []
         for identity in identities:

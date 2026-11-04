@@ -40,6 +40,7 @@ def create_app(settings: Settings | None = None, client_factory=make_client, pol
                     await task
                 except (asyncio.CancelledError, Exception):
                     pass
+            await app.state.sessions.close_all()
 
     app = FastAPI(title='resource-config', version=__version__, lifespan=lifespan)
     app.state.settings = settings

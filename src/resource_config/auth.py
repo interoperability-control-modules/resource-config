@@ -49,6 +49,12 @@ class Sessions:
             self._sessions.pop(session.sid, None)
             await session.client.close()
 
+    async def close_all(self) -> None:
+        """At shutdown: close every session's platform client."""
+        sessions, self._sessions = list(self._sessions.values()), {}
+        for session in sessions:
+            await session.client.close()
+
     def any(self) -> Session | None:
         """The most recent live session, for background work (the store poller) that needs platform credentials."""
         return max(self._sessions.values(), key=lambda s: s.created) if self._sessions else None

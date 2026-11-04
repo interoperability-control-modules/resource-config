@@ -65,8 +65,10 @@ function rail(which, label, badges) {
 export function collapseHandle(which) {
   return h('span', { class: 'hd', onClick: () => togglePane(which) }, which === 'side' ? '◂ collapse' : 'collapse ▸');
 }
+let stopEvents = null;    // the one store-event socket of this page; closed on sign-out and when the session ends
 async function logout() { await api.logout(); state.session = null; showLogin(); }
 function showLogin(message = '') {
+  if (stopEvents) { stopEvents(); stopEvents = null; }
   document.getElementById('login').classList.remove('hidden');
   document.getElementById('loginerror').textContent = message;
 }
@@ -88,6 +90,7 @@ async function start() {
 async function boot() {
   state.catalog = await api.catalog();
   await refreshModel(true);
-  api.events((message) => { if (message.type === 'store' && state.model && message.version !== state.model.version) refreshModel(false); });
+  if (stopEvents) stopEvents();
+  stopEvents = api.events((message) => { if (message.type === 'store' && state.model && message.version !== state.model.version) refreshModel(false); });
 }
 start();

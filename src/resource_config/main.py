@@ -19,6 +19,8 @@ def main(argv=None):
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
+    if not args.debug:
+        logging.getLogger('httpx').setLevel(logging.WARNING)    # one line per platform request is debugging output
     settings = Settings.load(args.config)
     overrides = {k: v for k, v in {'platform_url': args.platform_url, 'platform_name': args.platform_name, 'dialect': args.dialect,
                                    'host': args.host, 'port': args.port}.items() if v is not None}

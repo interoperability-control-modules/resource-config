@@ -39,13 +39,20 @@ export const api = {
   applyPending: () => request('POST', '/api/pending/apply'),
   discardPending: () => request('DELETE', '/api/pending'),
   discardPendingEntry: (identity, name) => request('DELETE', `/api/pending/${encodeURIComponent(identity)}/${name}`),
+  // The store-event socket. Reconnects after a drop with a growing delay; stops when the server says the session is
+  // gone (close code 4401, e.g. after the UI process restarted) and lets the page show the login instead.
   events(onMessage) {
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    let socket, closed = false;
+    let socket, closed = false, delay = 1000;
     const connect = () => {
       socket = new WebSocket(`${protocol}://${location.host}/ws`);
+      socket.onopen = () => { delay = 1000; };
       socket.onmessage = (e) => { try { onMessage(JSON.parse(e.data)); } catch { /* ignore */ } };
-      socket.onclose = () => { if (!closed) setTimeout(connect, 3000); };
+      socket.onclose = (e) => {
+        if (closed) return;
+        if (e.code === 4401) { closed = true; window.dispatchEvent(new CustomEvent('rc:unauthorized')); return; }
+        setTimeout(connect, delay); delay = Math.min(delay * 2, 30000);
+      };
     };
     connect();
     return () => { closed = true; socket && socket.close(); };
