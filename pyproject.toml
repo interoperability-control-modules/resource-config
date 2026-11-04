@@ -5,13 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "resource-config"
 version = "0.1.0a0"
-description = "Configuration UI for the DER control framework: resources, devices, formats, transforms, bridges and agents on a VOLTTRON or der-control-fastlib platform."
+description = "Configuration UI for the interoperability control framework: resources, devices, formats, transforms, bridges and agents on a VOLTTRON or der-control-fastlib platform."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.27",
+    "websockets>=12",    # uvicorn serves the /ws store-event socket with it
     "httpx>=0.27",
     "pydantic>=2.6",
     "itsdangerous>=2.1",

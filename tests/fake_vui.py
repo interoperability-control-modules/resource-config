@@ -3,8 +3,10 @@ exercised without a platform. Served in-process through httpx.ASGITransport."""
 from __future__ import annotations
 
 import csv
+import fnmatch
 import io
 import json
+import re
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 
@@ -109,15 +111,22 @@ def make_fake_vui() -> FastAPI:
             names += ['platform.web', 'config.store']
         return links(f'/vui/platforms/{PLATFORM}/agents', names)
 
+    def selection(request: Request) -> list[str]:
+        # Like the real VUI: the wildcard identity requires a tag or regex filter.
+        tag, regex = request.query_params.get('tag'), request.query_params.get('regex')
+        if tag is None and regex is None:
+            raise HTTPException(400, {'error': "The wildcard identity '-' requires a tag or regex query parameter."})
+        return [i for i, a in app.state.agents.items() if (regex is None or re.search(regex, i)) and (tag is None or fnmatch.fnmatchcase(str(a.get('tag')), tag))]
+
     @app.get(f'/vui/platforms/{PLATFORM}/agents/-/status')
-    async def status(authorization: str | None = Header(default=None)):
+    async def status(request: Request, authorization: str | None = Header(default=None)):
         check(authorization)
-        return app.state.agents
+        return {i: app.state.agents[i] for i in selection(request)}
 
     @app.get(f'/vui/platforms/{PLATFORM}/agents/-/health')
-    async def health(authorization: str | None = Header(default=None)):
+    async def health(request: Request, authorization: str | None = Header(default=None)):
         check(authorization)
-        return {'platform.driver': {'status': 'GOOD', 'context': 'polling'}}
+        return {i: {'status': 'GOOD', 'context': 'polling'} for i in selection(request) if i == 'platform.driver'}
 
     @app.api_route(f'/vui/platforms/{PLATFORM}/agents/{{identity}}/running', methods=['GET', 'PUT', 'DELETE'])
     async def running(identity: str, request: Request, authorization: str | None = Header(default=None)):

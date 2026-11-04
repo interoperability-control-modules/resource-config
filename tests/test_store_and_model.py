@@ -66,3 +66,13 @@ async def test_refresh_uses_validators_when_the_platform_sends_them(vui, fake_pl
     store2 = Store()
     await store2.refresh(vui)
     assert len(store2.entries) == len(store.entries) and store2.get('platform.driver', 'devices/matrix/SunSpec/client').etag.startswith('"')
+
+
+def test_device_entry_with_remote_config_key(settings):
+    """icmstack and the e2e harness nest the remote's settings under remote_config rather than driver_config."""
+    from resource_config.relations import build_model
+    snapshot = {'identities': {'platform.driver': {
+        'devices/icm/dnp3/served': {'type': 'json', 'data': {'driver_type': 'dnp3', 'registry_config': 'config://registry_configs/x.csv', 'interval': 2.0,
+                                                             'remote_config': {'driver_type': 'dnp3', 'driver_role': 'outstation', 'bind_host': '127.0.0.1', 'port': 20011}}}}}}
+    device = build_model(snapshot, settings)['devices'][0]
+    assert device['driver_role'] == 'outstation' and device['remote_config']['port'] == 20011 and 'remote_config' not in device['remote_config']

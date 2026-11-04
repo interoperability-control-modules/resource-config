@@ -36,5 +36,12 @@ async def dev_login(request: Request):
     return response
 
 
+@app.get('/dev/check', include_in_schema=False)
+async def dev_check():
+    # A page that drives the UI in an iframe and prints what it finds, for headless browser checks.
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse((Path(__file__).parent / 'dev_check.html').read_text())
+
+
 if __name__ == '__main__':
     uvicorn.run(app, host='127.0.0.1', port=int(sys.argv[1]) if len(sys.argv) > 1 else 8600, log_level='warning')

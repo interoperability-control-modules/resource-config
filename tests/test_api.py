@@ -14,6 +14,7 @@ def test_session_store_and_model(logged_in):
     model = ui.get('/api/model').json()
     assert {c['topic'] for c in model['resources']['canonical']} == {'matrix/SunSpec/client', 'matrix/DNP3/served'}
     assert any(a['identity'] == 'platform.driver' and a['type'] == 'driver' for a in model['agents'])
+    assert model['store_entries']['platform.presentation'] == ['config'] and 'config' not in model['store_entries']['platform.driver']
     assert ui.get('/api/catalog').json()['schemas']
 
 
@@ -79,3 +80,43 @@ def test_model_is_enriched_from_the_running_agents(logged_in):
     assert bridge['stats']['messages'] == 12
     report = logged_in.post('/api/interop/chain_report', json={'input_format': 'sunspec_client', 'output_format': 'openfmb.solar.reading'}).json()
     assert report['hops'][0]['kept'] == 104
+
+
+def test_agents_are_visible_with_status(logged_in):
+    """The wildcard status/health routes need a selector; without one every agent was reported as hidden."""
+    agents = {a['identity']: a for a in logged_in.get('/api/model').json()['agents']}
+    assert agents['platform.driver']['hidden'] is False and agents['platform.driver']['running'] is True
+    assert agents['platform.driver']['pid'] == 100 and agents['platform.driver']['health']['status'] == 'GOOD'
+    assert agents['platform.web']['hidden'] is True
+
+
+def test_alias_added_through_pending_links_to_its_canonical(logged_in):
+    """What the Add-alias dialog produces: an alias mapping referencing the canonical, applied from the pending set."""
+    ui = logged_in
+    model = ui.get('/api/model').json()
+    canonical = next(c for c in model['resources']['canonical'] if c['topic'] == 'matrix/SunSpec/client')
+    service = ui.get('/api/store/platform.presentation/config').json()['data']
+    service['mappings'].append({'uai': ['openfmb', 'solarmodule', 'SolarReadingProfile', 'new-alias'], 'resource_type': 'alias',
+                                'resource': {'data_format': 'openfmb.solar.reading', 'owner': canonical['owner'], 'references': canonical['uai'], 'encoding': 'protobuf'}})
+    ui.post('/api/pending', json=[{'identity': 'platform.presentation', 'name': 'config', 'type': 'json', 'data': service}])
+    assert ui.post('/api/pending/apply').json()['applied'] == [{'identity': 'platform.presentation', 'name': 'config'}]
+    model = ui.get('/api/model?refresh=true').json()
+    alias = next(a for a in model['resources']['aliases'] if a['topic'] == 'openfmb/solarmodule/SolarReadingProfile/new-alias')
+    assert alias['canonical'] == 'matrix/SunSpec/client' and alias['dangling'] is False
+    assert 'openfmb/solarmodule/SolarReadingProfile/new-alias' in next(c for c in model['resources']['canonical'] if c['topic'] == 'matrix/SunSpec/client')['aliases']
+    assert all(c['topic'] != 'openfmb/solarmodule/SolarReadingProfile/new-alias' for c in model['resources']['canonical'])
+
+
+def test_websocket_without_session_closes_with_4401(ui):
+    """Accepted and then closed with a code, so the page stops reconnecting instead of the server logging 403s."""
+    from starlette.websockets import WebSocketDisconnect
+    import pytest
+    with pytest.raises(WebSocketDisconnect) as info:
+        with ui.websocket_connect('/ws') as ws:
+            ws.receive_json()
+    assert info.value.code == 4401
+
+
+def test_catalog_carries_the_openfmb_editions(logged_in):
+    openfmb = logged_in.get('/api/catalog').json().get('openfmb') or {}
+    assert openfmb.get('latest') and openfmb['latest'] in openfmb.get('editions', [])
