@@ -124,6 +124,24 @@ async function run() {
   check('device topic chips show slashes between them', wraps.length >= 2 && win().getComputedStyle(wraps[1], '::before').content.includes('/') && win().getComputedStyle(wraps[0], '::before').content === 'none');
   const wide = doc().querySelector('#main input.seg'); wide.value = 'averyveryverylongsegmentname'; wide.dispatchEvent(new (win().Event)('input', { bubbles: true })); await sleep(30);
   check('a long segment is not clipped', wide.scrollWidth <= wide.clientWidth + 1, `${wide.scrollWidth} vs ${wide.clientWidth}`);
+  // 8. The product name stays out of the drawn UI: registry headers, package names, tooltips and labels
+  await go('#/devices?topic=' + encodeURIComponent('matrix/DNP3/served')); await sleep(300);
+  const heads = [...doc().querySelectorAll('#main .grid-table th')].map((e) => e.textContent.trim());
+  check('registry point-name column is shown as Point Name', heads.includes('Point Name') && !heads.some((h) => /volttron/i.test(h)), heads.join(' | '));
+  check('the file header is kept as the cell title', [...doc().querySelectorAll('#main .grid-table th')].some((e) => (e.getAttribute('title') || '').startsWith('Volttron Point Name')));
+  await go('#/agents?identity=platform.driver'); await sleep(300);
+  const pkg = [...doc().querySelectorAll('#main .mb')].map((e) => e.textContent.replace(/\s+/g, ' ').trim()).find((s) => s.startsWith('package'));
+  check('package shown as a product-neutral name with version', pkg === 'package Platform Driver 2.0.0rc8', pkg || 'no package box');
+  const leaks = [];
+  for (const hash of ['#/resources', '#/bridges', '#/devices?topic=' + encodeURIComponent('matrix/DNP3/served'), '#/agents?identity=platform.bus_adapter&edit=1', '#/agents?identity=platform.resource_bridge&edit=1']) {
+    await go(hash); await sleep(300);
+    for (const adv of [...doc().querySelectorAll('#main .rsec.col h5')]) adv.click();
+    await sleep(50);
+    const texts = [doc().querySelector('#main').textContent, doc().querySelector('#side') ? doc().querySelector('#side').textContent : ''];
+    texts.push(...[...doc().querySelectorAll('[data-tip]')].map((e) => e.getAttribute('data-tip')), ...[...doc().querySelectorAll('[title]')].filter((e) => !e.closest('.grid-table')).map((e) => e.getAttribute('title')));
+    for (const s of texts) if (s && /volttron/i.test(s)) leaks.push(hash + ': ' + s.replace(/\s+/g, ' ').slice(0, 80));
+  }
+  check('no page text, tooltip or title names the product', leaks.length === 0, leaks.slice(0, 4).join(' ‖ '));
 }
 run().catch((e) => errors.push('check: ' + e.message)).then(() => { document.getElementById('out').textContent = out.join('\n') + '\nerrors: ' + JSON.stringify(errors); });
 </script></body></html>

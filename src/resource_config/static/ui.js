@@ -42,9 +42,35 @@ export const btn = (label, onClick, { primary = false, small = true, title } = {
   h('span', { class: `btn${small ? ' sm' : ''}${primary ? ' pri' : ''}`, onClick, title, tabindex: '0', role: 'button',
     onKeydown: (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.currentTarget.classList.contains('dis')) { e.preventDefault(); e.currentTarget.click(); } } }, label);
 export const mb = (label, value) => h('span', { class: 'mb' }, label + ' ', h('b', {}, value));
+// ---- display names. The data keeps its real names (registry columns, package names, model descriptions); only what
+// is drawn changes. Rules, in order: platform-specific phrases first, then the bare product name is dropped.
+const DISPLAY_RULES = [
+  [/relayed into VOLTTRON/gi, 'relayed into the local system'],
+  [/into VOLTTRON\b/gi, 'into the local system'],
+  [/\bVOLTTRON's own (message )?bus\b/gi, 'the bus'],
+  [/\bthe VOLTTRON (message )?bus\b/gi, 'the bus'],
+  [/\bVOLTTRON (message )?bus\b/gi, 'the bus'],
+  [/\bEclipse VOLTTRON\b/g, 'the platform'],
+  [/\bVOLTTRON[ _-]+/gi, ''],
+  [/\bVOLTTRON\b/g, 'the platform'],
+];
+export const displayText = (s) => (typeof s === 'string' ? DISPLAY_RULES.reduce((acc, [re, to]) => acc.replace(re, to), s).replace(/^\s*(\w)/, (m, c) => c.toUpperCase()) : s);
+// A registry column header. The point-name column keeps its CSV header in the file; on screen it is "Point Name",
+// or "System Point Name" when the registry already has a column of that name.
+export const displayColumn = (name, siblings = []) => {
+  if (/^volttron[ _]?point[ _]?name$/i.test(name)) return siblings.some((c) => c !== name && /^point[ _]?name$/i.test(c)) ? 'System Point Name' : 'Point Name';
+  return displayText(name);
+};
+// A distribution name as the platform reports it (volttron-platform-driver-2.0.0rc9) shown as "Platform Driver 2.0.0rc9".
+export const packageLabel = (name) => {
+  if (!name) return '—';
+  const m = /^(.*?)[-_](\d[\w.+-]*)$/.exec(name);
+  const base = (m ? m[1] : name).replace(/^volttron[-_]/i, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return m ? `${base} ${m[2]}` : base;
+};
 // Tooltips are drawn by CSS from data-tip (see .tip in styles.css), so they show on hover without the browser's delay.
-export const info = (tip) => h('span', { class: 'tip note', 'data-tip': tip }, 'ⓘ');
-export const labelled = (label, tip) => (tip ? h('span', { class: 'k tip', 'data-tip': tip }, label, ' ', h('span', { class: 'note' }, 'ⓘ')) : h('span', { class: 'k' }, label));
+export const info = (tip) => h('span', { class: 'tip note', 'data-tip': displayText(tip) }, 'ⓘ');
+export const labelled = (label, tip) => (tip ? h('span', { class: 'k tip', 'data-tip': displayText(tip) }, displayText(label), ' ', h('span', { class: 'note' }, 'ⓘ')) : h('span', { class: 'k' }, displayText(label)));
 
 // ---- the card: header with identity, badges, boxes and buttons; sections; collapsed rows.
 export function card({ title, badge, boxes = [], buttons = [], sections = [] }) {
@@ -251,5 +277,5 @@ function typesOf(prop) {
   return set;
 }
 function coerce(v, types) { if (v === '') return null; if (types.has('integer')) return Number.isNaN(Number(v)) ? v : Number(v); if (types.has('boolean')) return v === 'true'; return v; }
-export function prettyName(name) { return name.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()); }
+export function prettyName(name) { return displayText(displayColumn(name).replace(/_/g, ' ')).replace(/^./, (c) => c.toUpperCase()); }
 export function ago(seconds) { if (seconds == null) return '—'; if (seconds < 60) return `${Math.round(seconds)} s ago`; if (seconds < 3600) return `${Math.round(seconds / 60)} min ago`; return `${(seconds / 3600).toFixed(1)} h ago`; }

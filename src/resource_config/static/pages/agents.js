@@ -1,6 +1,6 @@
 // Agents: identity, package, lifecycle, the configuration form where a schema exists, State on the right.
 import { api } from '../api.js';
-import { h, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, toast } from '../ui.js';
+import { packageLabel, h, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, toast } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, checksCard, configEditor, serviceSummary, SCHEMA_OF_TYPE } from './common.js';
 
@@ -58,7 +58,7 @@ function renderAgent(main, ctx, a, editing) {
     : a.type === 'bus adapter' ? section('Remote topics', note(`${state.model.remote_topics.length} on ${state.model.buses.length} bus${state.model.buses.length === 1 ? '' : 'es'}`), { actions: [btn('Open Bridges ▸', () => navigate('bridges'))] }) : null;
   const lifecycle = a.hidden ? [] : [btn('Stop', () => act(a, 'stop')), btn('Restart', () => act(a, 'restart')), btn(a.enabled ? 'Disable' : 'Enable', () => act(a, a.enabled ? 'disable' : 'enable'))];
   if (!a.hidden && !a.running) lifecycle[0] = btn('Start', () => act(a, 'start'), { primary: true });
-  main.append(card({ title: h('span', { style: { fontSize: '18px', fontWeight: 600 } }, a.identity), badge: kind(a.type), boxes: [mb('package', a.name || '—'), a.tag ? mb('tag', a.tag) : null],
+  main.append(card({ title: h('span', { style: { fontSize: '18px', fontWeight: 600 } }, a.identity), badge: kind(a.type), boxes: [mb('package', packageLabel(a.name)), a.tag ? mb('tag', a.tag) : null],
     buttons: [...lifecycle, editing || !hasConfig || a.type === 'service' ? null : btn('Edit', () => navigate('agents', { identity: a.identity, edit: 1 })), btn('Raw JSON', () => rawEditor(a.identity, 'config')), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }]))],
     sections: [summary, section('Configuration', configBox, { note: schema ? 'config · generated from the agent\'s model' : a.type === 'service' ? 'config · lists owned by the Resources, Formats and Transforms tabs' : 'config' })] }));
   if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })),

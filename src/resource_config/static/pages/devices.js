@@ -1,6 +1,6 @@
 // Devices: a tree over the topic segments; one device card with Device, Polling and publishing, Remote config and Registry.
 import { api } from '../api.js';
-import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog, segmentsInput } from '../ui.js';
+import { displayColumn, h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog, segmentsInput } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, healthCard, checksCard, consumersCard, deleteDialog, dependentsOf, removeMapping } from './common.js';
 
@@ -102,7 +102,7 @@ function registryGrid(d) {
   const rows = d.registry_rows;
   if (!rows) return note(d.registry ? 'the registry entry is not a CSV table' : 'no registry');
   const columns = rows.length ? Object.keys(rows[0]) : [];
-  const table = h('table', { class: 'grid-table' }, h('tr', {}, ...columns.map((c) => h('th', {}, c))), ...rows.map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|point/i.test(c) ? 'mono' : '' }, r[c] ?? '')))));
+  const table = h('table', { class: 'grid-table' }, h('tr', {}, ...columns.map((c) => h('th', { title: c === displayColumn(c, columns) ? undefined : `${c} in the file` }, displayColumn(c, columns)))), ...rows.map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|point/i.test(c) ? 'mono' : '' }, r[c] ?? '')))));
   const warnings = rows.filter((r) => 'Units' in r && !r.Units && !/sf$|_SF$/.test(r['Point Name'] || '')).length;
   return h('div', {}, h('div', { class: 'note', style: { margin: '-4px 0 8px' } }, `${d.registry_shared_with.length ? 'shared with ' + d.registry_shared_with.length + ' other device' + (d.registry_shared_with.length === 1 ? '' : 's') + ' · ' : ''}${rows.length} points${warnings ? ' · ' : ''}`, warnings ? h('a', { class: 'warn' }, `⚠ ${warnings} rows without units`) : null),
     h('div', { class: 'scrollbox' }, h('div', { class: 'scrollin', style: { overflow: 'auto', maxHeight: '320px' } }, table)));
@@ -261,7 +261,7 @@ function reviewDialog(result, form) {
   const registry = entries.find((e) => e.type === 'csv');
   const rows = (registry && registry.data) || [];
   const columns = rows.length ? Object.keys(rows[0]) : [];
-  const grid = h('table', {}, h('tr', {}, ...columns.map((c) => h('th', {}, c))), ...rows.slice(0, 300).map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|address|index/i.test(c) ? 'mono' : '' }, String(r[c] ?? ''))))));
+  const grid = h('table', {}, h('tr', {}, ...columns.map((c) => h('th', { title: c === displayColumn(c, columns) ? undefined : `${c} in the file` }, displayColumn(c, columns)))), ...rows.slice(0, 300).map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|address|index/i.test(c) ? 'mono' : '' }, String(r[c] ?? ''))))));
   const identity = Object.entries(result.identity || {}).map(([k, v]) => `${k} ${v}`).join(' · ');
   const summary = h('div', { class: 'note', style: { marginBottom: '8px' } }, identity ? `${identity} · ` : '', result.models ? `models ${result.models.join(', ')} · ` : '', `${result.points ?? rows.length} points`);
   if (result.remote_id) summary.append(' · device UAI ', uai(result.remote_id, { size: 'small' }));

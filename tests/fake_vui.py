@@ -45,7 +45,7 @@ def initial_store() -> dict[str, dict[str, tuple[str, str]]]:
                             'registry_configs/sunspec_client.csv': ('csv', REGISTRY),
                             'devices/matrix/DNP3/served': ('json', json.dumps({'driver_type': 'dnp3', 'driver_role': 'outstation', 'publish_depth_first_all': True,
                                                                                 'registry_config': 'config://registry_configs/dnp3_served.csv'})),
-                            'registry_configs/dnp3_served.csv': ('csv', 'Point Name,Index,Data Source\nAI_1,1,server\n')},
+                            'registry_configs/dnp3_served.csv': ('csv', 'Volttron Point Name,Index,Data Source\nAI_1,1,server\n')},
         'platform.presentation': {'config': ('json', json.dumps(SERVICE))},
         'platform.resource_bridge': {'config': ('json', json.dumps(BRIDGE))},
         'platform.bus_adapter': {'config': ('json', json.dumps(BUS))},
