@@ -37,6 +37,20 @@ function tree(devices, selected) {
   return el;
 }
 
+// Values this tool fills in where the driver's own default names the platform. They are written into the config
+// when the field is absent (so the device carries them, not the driver default) and shown as the field's placeholder.
+// A field is seeded only when the schema's show_when hint, if any, admits the device's role.
+const UI_DEFAULTS = { ieee2030_5: { description: 'ICM' }, bacnet: { object_name: 'ICM' } };
+export function uiDefaults(driverType, role, iface) {
+  const hints = (iface && iface.remote && iface.remote['x-hints']) || {};
+  const admits = (name) => { const w = (hints[name] || {}).show_when; return !w || Object.entries(w).every(([k, v]) => k !== 'driver_role' || (Array.isArray(v) ? v : [v]).includes(role || 'client')); };
+  return Object.fromEntries(Object.entries(UI_DEFAULTS[driverType] || {}).filter(([name]) => admits(name)));
+}
+export function seedDefaults(remote, iface) {
+  if (!remote) return remote;
+  for (const [name, value] of Object.entries(uiDefaults(remote.driver_type, remote.driver_role, iface))) if (remote[name] === undefined || remote[name] === null || remote[name] === '') remote[name] = value;
+  return remote;
+}
 function renderDevice(main, ctx, d, editing) {
   const catalog = state.catalog || { schemas: {}, interfaces: {} };
   const iface = catalog.interfaces[d.driver_type] || null;
@@ -57,7 +71,7 @@ function renderDevice(main, ctx, d, editing) {
     ['Publishes', h('div', {}, h('div', { class: 'mono', style: { padding: '2px 0' } }, d.publication_topic), editing ? radios('pub', d.publishes, [['all', 'all'], ['multi', 'multi']], (v) => { draft.config.publish_depth_first_all = v === 'all'; draft.config.publish_depth_first_multi = v === 'multi'; }) : note(d.publishes === 'all' ? 'all: one message per poll with every point' : 'multi: one message per poll with the points that changed')), 'The device publishes on exactly one of the two topics.'],
     ['Heartbeat point', editing ? input(d.heart_beat_point || '', { width: '200px', onChange: (v) => (remote.heart_beat_point = v || null) }) : d.heart_beat_point || '—']]);
   const remoteSection = iface ? (editing
-      ? schemaForm(iface.remote, remote, { hide: ['driver_type', 'driver_role', 'heart_beat_point', 'module', 'plugins', 'register_map'], onChange: (name, value) => { if (value === null) delete remote[name]; else remote[name] = value; } })
+      ? schemaForm(iface.remote, remote, { defaults: uiDefaults(d.driver_type, d.driver_role, iface), hide: ['driver_type', 'driver_role', 'heart_beat_point', 'module', 'plugins', 'register_map'], onChange: (name, value) => { if (value === null) delete remote[name]; else remote[name] = value; } })
       : remoteView(iface.remote, remote))
     : h('div', {}, note(`no schema for driver type "${d.driver_type}" is installed beside the UI; the raw entry is editable`), h('pre', { class: 'mono' }, JSON.stringify(remote, null, 2)));
   const registrySection = section('Registry', registryGrid(d), { note: d.registry ? d.registry.replace('registry_configs/', '') : 'none',
@@ -143,6 +157,7 @@ async function saveDevice(d, draft) {
   try {
     const config = draft.config;
     for (const k of Object.keys(config)) if (config[k] === null || config[k] === undefined) delete config[k];
+    if (config.driver_config) seedDefaults(config.driver_config, ((state.catalog || {}).interfaces || {})[config.driver_config.driver_type || d.driver_type]);
     if (draft.topic && draft.topic !== d.topic) {
       await api.putEntry('platform.driver', `devices/${draft.topic}`, { type: 'json', data: config });
       await api.deleteEntry('platform.driver', d.entry);
@@ -171,7 +186,7 @@ function addDevice() {
       try {
         const registry = form.registry || `registry_configs/${form.topic.split('/').pop()}.csv`;
         if (!form.registry) await api.putEntry('platform.driver', registry, { type: 'csv', text: 'Point Name,Address,Data Type,Writable,Data Source,Units\n' });
-        await api.putEntry('platform.driver', `devices/${form.topic}`, { type: 'json', data: { registry_config: `config://${registry}`, driver_config: { driver_type: form.driver_type, driver_role: 'client' }, driver_type: form.driver_type } });
+        await api.putEntry('platform.driver', `devices/${form.topic}`, { type: 'json', data: { registry_config: `config://${registry}`, driver_config: seedDefaults({ driver_type: form.driver_type, driver_role: 'client' }, ((state.catalog || {}).interfaces || {})[form.driver_type]), driver_type: form.driver_type } });
         close(); toast('device created', 'ok'); await refreshModel(false); navigate('devices', { topic: form.topic, edit: 1 });
       } catch (e) { toast(e.message, 'err'); } } }] });
 }
@@ -274,6 +289,8 @@ function reviewDialog(result, form) {
     h('div', { style: { overflow: 'auto', maxHeight: '240px', border: '1px solid var(--line)', borderRadius: '6px' } }, grid),
     (result.notes || []).length ? h('div', { class: 'note', style: { marginTop: '8px' } }, 'Notes: ', (result.notes || []).join(' · ')) : null),
     actions: [{ label: '◂ Back', onClick: (c) => { c(); discoverDialog(); } }, { label: 'Add to pending changes ▸', primary: true, onClick: async (c) => {
-      try { await api.addPending(entries); toast('added to the pending set', 'ok'); c(); await refreshModel(false); navigate('pending'); } catch (e) { toast(e.message, 'err'); }
+      try {
+        for (const e of entries) if (e.identity === 'platform.driver' && e.data && e.data.driver_config) seedDefaults(e.data.driver_config, ((state.catalog || {}).interfaces || {})[e.data.driver_config.driver_type || e.data.driver_type]);
+        await api.addPending(entries); toast('added to the pending set', 'ok'); c(); await refreshModel(false); navigate('pending'); } catch (e) { toast(e.message, 'err'); }
     } }] });
 }

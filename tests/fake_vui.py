@@ -43,6 +43,8 @@ def initial_store() -> dict[str, dict[str, tuple[str, str]]]:
     return {
         'platform.driver': {'devices/matrix/SunSpec/client': ('json', json.dumps(DEVICE)),
                             'registry_configs/sunspec_client.csv': ('csv', REGISTRY),
+                            'devices/matrix/SEP2/client': ('json', json.dumps({'driver_type': 'ieee2030_5', 'driver_config': {'driver_type': 'ieee2030_5', 'driver_role': 'client', 'server_url': 'https://127.0.0.1:7443'},
+                                                                                'registry_config': 'config://registry_configs/dnp3_served.csv'})),
                             'devices/matrix/DNP3/served': ('json', json.dumps({'driver_type': 'dnp3', 'driver_role': 'outstation', 'publish_depth_first_all': True,
                                                                                 'registry_config': 'config://registry_configs/dnp3_served.csv'})),
                             'registry_configs/dnp3_served.csv': ('csv', 'Volttron Point Name,Index,Data Source\nAI_1,1,server\n')},

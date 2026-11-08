@@ -132,13 +132,18 @@ async function run() {
   await go('#/agents?identity=platform.driver'); await sleep(300);
   const pkg = [...doc().querySelectorAll('#main .mb')].map((e) => e.textContent.replace(/\s+/g, ' ').trim()).find((s) => s.startsWith('package'));
   check('package shown as a product-neutral name with version', pkg === 'package Platform Driver 2.0.0rc8', pkg || 'no package box');
+  await go('#/devices?topic=' + encodeURIComponent('matrix/SEP2/client') + '&edit=1'); await sleep(400);
+  for (const adv of [...doc().querySelectorAll('#main .rsec.col h5')]) adv.click();
+  await sleep(50);
+  const phs = [...doc().querySelectorAll('#main input')].map((i) => i.placeholder).filter(Boolean);
+  check('tool default ICM shown where the driver default names the platform', phs.includes('ICM') && !phs.some((s) => /volttron/i.test(s)), phs.filter((s) => /icm|volttron/i.test(s)).join(' | ') || 'no such placeholder');
   const leaks = [];
-  for (const hash of ['#/resources', '#/bridges', '#/devices?topic=' + encodeURIComponent('matrix/DNP3/served'), '#/agents?identity=platform.bus_adapter&edit=1', '#/agents?identity=platform.resource_bridge&edit=1']) {
+  for (const hash of ['#/resources', '#/bridges', '#/devices?topic=' + encodeURIComponent('matrix/DNP3/served'), '#/devices?topic=' + encodeURIComponent('matrix/SEP2/client') + '&edit=1', '#/agents?identity=platform.bus_adapter&edit=1', '#/agents?identity=platform.resource_bridge&edit=1']) {
     await go(hash); await sleep(300);
     for (const adv of [...doc().querySelectorAll('#main .rsec.col h5')]) adv.click();
     await sleep(50);
     const texts = [doc().querySelector('#main').textContent, doc().querySelector('#side') ? doc().querySelector('#side').textContent : ''];
-    texts.push(...[...doc().querySelectorAll('[data-tip]')].map((e) => e.getAttribute('data-tip')), ...[...doc().querySelectorAll('[title]')].filter((e) => !e.closest('.grid-table')).map((e) => e.getAttribute('title')));
+    texts.push(...[...doc().querySelectorAll('[placeholder]')].map((e) => e.getAttribute('placeholder')), ...[...doc().querySelectorAll('[data-tip]')].map((e) => e.getAttribute('data-tip')), ...[...doc().querySelectorAll('[title]')].filter((e) => !e.closest('.grid-table')).map((e) => e.getAttribute('title')));
     for (const s of texts) if (s && /volttron/i.test(s)) leaks.push(hash + ': ' + s.replace(/\s+/g, ' ').slice(0, 80));
   }
   check('no page text, tooltip or title names the product', leaks.length === 0, leaks.slice(0, 4).join(' ‖ '));
