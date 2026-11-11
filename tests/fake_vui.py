@@ -16,7 +16,7 @@ PLATFORM = 'site1'
 DEVICE = {'driver_type': 'modbus', 'driver_role': 'client', 'registry_config': 'config://registry_configs/sunspec_client.csv',
           'interval': 2, 'publish_depth_first_multi': True,
           'driver_config': {'device_address': '127.0.0.1', 'port': 15020, 'unit_id': 1, 'transport_protocol': 'tcp'}}
-REGISTRY = 'Point Name,Address,Data Type,Table,Writable,Data Source,Units\n701_W,40084,int16,holding,FALSE,short_poll,W\n701_W_SF,40092,sunssf,holding,FALSE,poll_once,\n'
+REGISTRY = 'Point Name,Address,Data Type,Table,Writable,Data Source,Units,Transform\n701_W,40084,int16,holding,FALSE,short_poll,W,sunssf(701_W_SF)\n701_W_SF,40092,sunssf,holding,FALSE,poll_once,,\n701_Hz,40094,uint16,holding,FALSE,short_poll,Hz,"transform(sunssf(701_Hz_SF), round(2))"\n'
 SERVICE = {'mappings': [
     {'uai': ['matrix', 'SunSpec', 'client'], 'resource_type': 'canonical',
      'resource': {'data_format': 'sunspec_client', 'owner': 'platform.driver', 'publication_topic': 'devices/matrix/SunSpec/client/multi',

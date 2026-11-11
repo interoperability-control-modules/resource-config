@@ -71,6 +71,60 @@ async def compile_pattern(body: Pattern, request: Request, session: Session = De
         raise HTTPException(e.status, str(e))
 
 
+class Transforms(BaseModel):
+    texts: list[str]
+    missing_reference: str = 'hold'
+
+
+def _transform_tools():
+    try:
+        from icm.transforms import UnknownFunction, compile_value_transform, registry
+    except ImportError as e:                                                   # pragma: no cover - a UI without the library
+        raise HTTPException(503, f'icm-lib-transforms is not installed beside the UI: {e}')
+    return UnknownFunction, compile_value_transform, registry
+
+
+@router.post('/interop/validate_transforms')
+async def validate_transforms(body: Transforms, request: Request, session: Session = Depends(current_session)):
+    """Compile each registry Transform cell with the library the driver framework uses, so a cell is validated exactly as
+    the driver will read it: one function call or a transform(...) sequence. Per text: ``ok``, the functions it calls,
+    the other points it references, its result type, the functions without an inverse, whether it defines the point's
+    value from other registers, or the error."""
+    UnknownFunction, compile_value_transform, _ = _transform_tools()
+    out = {}
+    for text in dict.fromkeys(body.texts):
+        try:
+            t = compile_value_transform(text, missing_reference=body.missing_reference)
+        except UnknownFunction as e:
+            out[text] = {'ok': False, 'error': str(e), 'unknown_function': e.name}
+        except ValueError as e:
+            out[text] = {'ok': False, 'error': str(e)}
+        else:
+            out[text] = {'ok': True, 'functions': list(t.functions), 'references': sorted(t.references),
+                         'result_type': t.result_type.__name__ if t.result_type else None, 'invertible': t.invertible,
+                         'non_invertible': list(t.non_invertible), 'defines_value': t.defines_value, 'fidelity': t.fidelity}
+    return out
+
+
+@router.get('/interop/transform_functions')
+async def transform_functions(request: Request, session: Session = Depends(current_session)):
+    """Every function a Transform cell may call, with its aliases, the first line of its documentation, the type it
+    yields and its fidelity: what an editor offers as completions."""
+    _, _, registry = _transform_tools()
+    import inspect
+    out = []
+    for entry in registry.entries():
+        doc = inspect.getdoc(entry.factory) or ''
+        try:
+            signature = str(inspect.signature(entry.factory))
+        except (TypeError, ValueError):
+            signature = '(...)'
+        out.append({'name': entry.name, 'aliases': list(entry.aliases), 'signature': signature,
+                    'doc': doc.strip().splitlines()[0] if doc.strip() else '', 'fidelity': entry.fidelity,
+                    'result_type': entry.result_type.__name__ if entry.result_type else None, 'package': entry.package})
+    return out
+
+
 @router.post('/interop/rpc')
 async def call(body: Call, request: Request, session: Session = Depends(current_session)):
     settings = request.app.state.settings

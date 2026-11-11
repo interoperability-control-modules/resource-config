@@ -16,6 +16,7 @@ dependencies = [
     "httpx>=0.27",
     "pydantic>=2.6",
     "itsdangerous>=2.1",
+    "icm-lib-transforms>=0.1.0",   # validates registry Transform cells exactly as the driver framework reads them
 ]
 
 [project.optional-dependencies]

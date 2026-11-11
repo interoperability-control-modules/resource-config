@@ -120,3 +120,28 @@ def test_websocket_without_session_closes_with_4401(ui):
 def test_catalog_carries_the_openfmb_editions(logged_in):
     openfmb = logged_in.get('/api/catalog').json().get('openfmb') or {}
     assert openfmb.get('latest') and openfmb['latest'] in openfmb.get('editions', [])
+
+
+def test_transform_cells_are_validated_with_the_drivers_library(logged_in):
+    """A registry Transform cell is compiled exactly as the driver framework reads it."""
+    r = logged_in.post('/api/interop/validate_transforms', json={'texts': ['scale(0.001)', 'transform(sunssf(W_SF), round(1))', 'scale(0.1), add(1)', 'nosuch(2)', 'sum_of(a, b)']})
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out['scale(0.001)'] == {'ok': True, 'functions': ['scale'], 'references': [], 'result_type': 'float', 'invertible': True, 'non_invertible': [], 'defines_value': False, 'fidelity': 1.0}
+    assert out['transform(sunssf(W_SF), round(1))']['references'] == ['W_SF'] and out['transform(sunssf(W_SF), round(1))']['functions'] == ['sunssf', 'round']
+    assert out['scale(0.1), add(1)']['ok'] is False and 'transform(f1' in out['scale(0.1), add(1)']['error']
+    assert out['nosuch(2)'] == {'ok': False, 'error': "value: unknown transform function 'nosuch'.", 'unknown_function': 'nosuch'}
+    assert out['sum_of(a, b)']['defines_value'] is True and out['sum_of(a, b)']['references'] == ['a', 'b'] and out['sum_of(a, b)']['invertible'] is False
+
+
+def test_transform_functions_are_listed_for_completion(logged_in):
+    r = logged_in.get('/api/interop/transform_functions')
+    assert r.status_code == 200, r.text
+    by_name = {f['name']: f for f in r.json()}
+    assert by_name['sunssf']['doc'].startswith('Scale by a SunSpec scale factor') and by_name['equals']['aliases'] == ['eq']
+    assert by_name['scale_int']['result_type'] == 'int' and by_name['scale_int']['fidelity'] == 0.9
+    assert 'literal' in by_name and 'reg_name' in by_name and by_name['sum_of']['signature'] == '(*args)'
+
+
+def test_validation_needs_a_login(ui):
+    assert ui.post('/api/interop/validate_transforms', json={'texts': ['scale(1)']}).status_code in (401, 403)
