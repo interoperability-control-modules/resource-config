@@ -24,8 +24,8 @@ MODEL_SOURCES: dict[tuple[str, str], tuple[str, str]] = {
     ('bus_adapter', 'config'): ('bus_adapter.config', 'MessageBusAdapterConfig'),
     ('bus_adapter', 'mqtt'): ('bus_adapter.config', 'MQTTConfig'),
     ('bus_adapter', 'nats'): ('bus_adapter.config', 'NATSConfig'),
-    ('service', 'canonical'): ('interoperability.resource', 'CanonicalResource'),
-    ('service', 'alias'): ('interoperability.resource', 'AliasedResource'),
+    ('service', 'canonical'): ('icm.resources.resource', 'CanonicalResource'),
+    ('service', 'alias'): ('icm.resources.resource', 'AliasedResource'),
 }
 # Driver interfaces: their remote config and point config classes, when installed.
 INTERFACE_SOURCES: dict[str, tuple[str, str, str]] = {
@@ -111,7 +111,7 @@ def build_catalog() -> dict:
     catalog: dict[str, Any] = {'schemas': {}, 'interfaces': {}, 'source': {}, 'openfmb': {}}
     try:
         # The OpenFMB editions the service's codecs know and the one an alias gets when it names none (the newest).
-        from interoperability.codecs import openfmb as _openfmb
+        from icm.resources.codecs import openfmb as _openfmb
         catalog['openfmb'] = {'editions': list(_openfmb.editions()), 'latest': _openfmb.latest_edition()}
         catalog['source']['openfmb'] = 'live'
     except Exception:
