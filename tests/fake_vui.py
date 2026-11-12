@@ -16,7 +16,7 @@ PLATFORM = 'site1'
 DEVICE = {'driver_type': 'modbus', 'driver_role': 'client', 'registry_config': 'config://registry_configs/sunspec_client.csv',
           'interval': 2, 'publish_depth_first_multi': True,
           'driver_config': {'device_address': '127.0.0.1', 'port': 15020, 'unit_id': 1, 'transport_protocol': 'tcp'}}
-REGISTRY = 'Point Name,Address,Data Type,Table,Writable,Data Source,Units\n701_W,40084,int16,holding,FALSE,short_poll,W\n701_W_SF,40092,sunssf,holding,FALSE,poll_once,\n'
+REGISTRY = 'Point Name,Address,Data Type,Table,Writable,Data Source,Units,Transform\n701_W,40084,int16,holding,FALSE,short_poll,W,sunssf(701_W_SF)\n701_W_SF,40092,sunssf,holding,FALSE,poll_once,,\n701_Hz,40094,uint16,holding,FALSE,short_poll,Hz,"transform(sunssf(701_Hz_SF), round(2))"\n'
 SERVICE = {'mappings': [
     {'uai': ['matrix', 'SunSpec', 'client'], 'resource_type': 'canonical',
      'resource': {'data_format': 'sunspec_client', 'owner': 'platform.driver', 'publication_topic': 'devices/matrix/SunSpec/client/multi',
@@ -43,9 +43,11 @@ def initial_store() -> dict[str, dict[str, tuple[str, str]]]:
     return {
         'platform.driver': {'devices/matrix/SunSpec/client': ('json', json.dumps(DEVICE)),
                             'registry_configs/sunspec_client.csv': ('csv', REGISTRY),
+                            'devices/matrix/SEP2/client': ('json', json.dumps({'driver_type': 'ieee2030_5', 'driver_config': {'driver_type': 'ieee2030_5', 'driver_role': 'client', 'server_url': 'https://127.0.0.1:7443'},
+                                                                                'registry_config': 'config://registry_configs/dnp3_served.csv'})),
                             'devices/matrix/DNP3/served': ('json', json.dumps({'driver_type': 'dnp3', 'driver_role': 'outstation', 'publish_depth_first_all': True,
                                                                                 'registry_config': 'config://registry_configs/dnp3_served.csv'})),
-                            'registry_configs/dnp3_served.csv': ('csv', 'Point Name,Index,Data Source\nAI_1,1,server\n')},
+                            'registry_configs/dnp3_served.csv': ('csv', 'Volttron Point Name,Index,Data Source\nAI_1,1,server\n')},
         'platform.presentation': {'config': ('json', json.dumps(SERVICE))},
         'platform.resource_bridge': {'config': ('json', json.dumps(BRIDGE))},
         'platform.bus_adapter': {'config': ('json', json.dumps(BUS))},

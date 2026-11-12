@@ -207,6 +207,16 @@ Sessions live in the UI process: after a restart of the UI, users sign in again 
 | Bridges and Activity | Resource Bridge and bus adapter running, a broker, `platform.resource_bridge: statistics` allowed | bridges and remote topics listed, Activity card updating |
 | Pending changes | the `authz` grant of step 3 | saves succeed (403 without the grant); change detection uses the web service's `metadata=true` listings and `ETag` headers when it offers them, hash comparison of contents otherwise |
 
+## Registry transforms
+
+A registry's `Transform` column is checked with `icm-lib-transforms`, the library the driver framework reads it
+with, so the UI accepts exactly what the driver will: one function call such as `scale(0.001)`, or several wrapped
+in `transform(f1(...), f2(...))`. Each cell of the registry grid is marked as it compiles (hover for the functions,
+the points it reads, the type it yields and whether it can be written back through), a cell the library rejects is
+marked with its error, and the device's checks report rejected expressions and references to points the registry
+does not have. "Functions" on the registry section lists every function available, with its aliases and what it
+does. The endpoints are `POST /api/interop/validate_transforms` and `GET /api/interop/transform_functions`.
+
 ## Running against der-control-fastlib
 
 The `derhost` dialect (`--dialect derhost`) uses fastlib's REST routes: `POST /authenticate` for the login,
@@ -229,9 +239,18 @@ interoperability service runs from the `docker/interoperability-service` stack i
 
 ```bash
 pip install -e ".[dev]"
-pytest                         # backend against an in-process fake of the VUI
-python tests/dev_server.py     # the UI against that fake at http://127.0.0.1:8600/dev/login
+python -m playwright install chromium    # once; the browser the UI tests drive
+pytest                                   # API tests against an in-process fake of the VUI, then the UI in Chromium
+pytest -m "not browser"                  # the fast layer only
+python tests/dev_server.py               # the UI against that fake at http://127.0.0.1:8600/dev/login
 ```
+
+The browser tests (`tests/browser`) start that same server on a free port and drive the pages with Playwright: the
+segment input and dialog keyboard handling, both layouts, prefilled edit forms, deleting with dependents, the Devices
+registry with its Transform checks, Discover through to an applied pending set, the bus adapter editor, and a sweep
+that no drawn text, placeholder, tooltip or title names the platform. `pytest --headed` watches them run;
+`pytest --tracing retain-on-failure` keeps a trace of each failure under `test-results/`, which `playwright show-trace`
+replays. A test fails if the page raised an uncaught error.
 
 The schema catalog reads the components' pydantic models when their packages are installed beside the UI and
 otherwise uses `src/resource_config/catalog/catalog.json`, written with `python -m resource_config.catalog --dump`

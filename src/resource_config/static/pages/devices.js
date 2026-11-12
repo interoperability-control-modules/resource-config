@@ -1,6 +1,6 @@
 // Devices: a tree over the topic segments; one device card with Device, Polling and publishing, Remote config and Registry.
 import { api } from '../api.js';
-import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog, segmentsInput } from '../ui.js';
+import { displayColumn, h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog, segmentsInput } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, healthCard, checksCard, consumersCard, deleteDialog, dependentsOf, removeMapping } from './common.js';
 
@@ -10,7 +10,12 @@ const DEVICE_FIELDS = ['registry_config', 'interval', 'polling_group', 'group', 
   'publish_depth_first_single', 'publish_breadth_first_single', 'all_publish_interval', 'equipment_specific_fields', 'driver_config', 'driver_type', 'driver_role', 'heart_beat_point'];
 
 export function render({ side, main, ctx, params }) {
-  if (params.discover && !document.querySelector('.dialog')) setTimeout(discoverDialog, 0);   // #/devices?discover=1 opens the dialog
+  if (params.discover && !document.querySelector('.dialog')) {   // #/devices?discover=1 opens the dialog once; the flag leaves the route so later renders do not reopen it
+    delete params.discover;
+    const rest = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    history.replaceState(null, '', `#/devices${rest ? '?' + rest : ''}`);
+    setTimeout(discoverDialog, 0);
+  }
   const devices = state.model.devices;
   const selected = devices.find((d) => d.topic === params.topic) || devices[0];
   if (side) side.append(tree(devices, selected && selected.topic));
@@ -37,6 +42,20 @@ function tree(devices, selected) {
   return el;
 }
 
+// Values this tool fills in where the driver's own default names the platform. They are written into the config
+// when the field is absent (so the device carries them, not the driver default) and shown as the field's placeholder.
+// A field is seeded only when the schema's show_when hint, if any, admits the device's role.
+const UI_DEFAULTS = { ieee2030_5: { description: 'ICM' }, bacnet: { object_name: 'ICM' } };
+export function uiDefaults(driverType, role, iface) {
+  const hints = (iface && iface.remote && iface.remote['x-hints']) || {};
+  const admits = (name) => { const w = (hints[name] || {}).show_when; return !w || Object.entries(w).every(([k, v]) => k !== 'driver_role' || (Array.isArray(v) ? v : [v]).includes(role || 'client')); };
+  return Object.fromEntries(Object.entries(UI_DEFAULTS[driverType] || {}).filter(([name]) => admits(name)));
+}
+export function seedDefaults(remote, iface) {
+  if (!remote) return remote;
+  for (const [name, value] of Object.entries(uiDefaults(remote.driver_type, remote.driver_role, iface))) if (remote[name] === undefined || remote[name] === null || remote[name] === '') remote[name] = value;
+  return remote;
+}
 function renderDevice(main, ctx, d, editing) {
   const catalog = state.catalog || { schemas: {}, interfaces: {} };
   const iface = catalog.interfaces[d.driver_type] || null;
@@ -57,11 +76,13 @@ function renderDevice(main, ctx, d, editing) {
     ['Publishes', h('div', {}, h('div', { class: 'mono', style: { padding: '2px 0' } }, d.publication_topic), editing ? radios('pub', d.publishes, [['all', 'all'], ['multi', 'multi']], (v) => { draft.config.publish_depth_first_all = v === 'all'; draft.config.publish_depth_first_multi = v === 'multi'; }) : note(d.publishes === 'all' ? 'all: one message per poll with every point' : 'multi: one message per poll with the points that changed')), 'The device publishes on exactly one of the two topics.'],
     ['Heartbeat point', editing ? input(d.heart_beat_point || '', { width: '200px', onChange: (v) => (remote.heart_beat_point = v || null) }) : d.heart_beat_point || '—']]);
   const remoteSection = iface ? (editing
-      ? schemaForm(iface.remote, remote, { hide: ['driver_type', 'driver_role', 'heart_beat_point', 'module', 'plugins', 'register_map'], onChange: (name, value) => { if (value === null) delete remote[name]; else remote[name] = value; } })
+      ? schemaForm(iface.remote, remote, { defaults: uiDefaults(d.driver_type, d.driver_role, iface), hide: ['driver_type', 'driver_role', 'heart_beat_point', 'module', 'plugins', 'register_map'], onChange: (name, value) => { if (value === null) delete remote[name]; else remote[name] = value; } })
       : remoteView(iface.remote, remote))
     : h('div', {}, note(`no schema for driver type "${d.driver_type}" is installed beside the UI; the raw entry is editable`), h('pre', { class: 'mono' }, JSON.stringify(remote, null, 2)));
-  const registrySection = section('Registry', registryGrid(d), { note: d.registry ? d.registry.replace('registry_configs/', '') : 'none',
-    actions: [btn('Switch registry ▾', () => switchRegistry(d)), btn('Copy as new', () => copyRegistry(d)), btn('Import', () => importRegistry(d)), btn('Export', () => exportRegistry(d))] });
+  let checksEl = checksCard(deviceChecks(d));
+  const refreshChecks = () => { const fresh = checksCard(deviceChecks(d)); checksEl.replaceWith(fresh); checksEl = fresh; };
+  const registrySection = section('Registry', registryGrid(d, refreshChecks), { note: d.registry ? d.registry.replace('registry_configs/', '') : 'none',
+    actions: [btn('Functions ▸', () => transformFunctionsDialog()), btn('Switch registry ▾', () => switchRegistry(d)), btn('Copy as new', () => copyRegistry(d)), btn('Import', () => importRegistry(d)), btn('Export', () => exportRegistry(d))] });
   const buttons = editing
     ? [btn('Save', () => saveDevice(d, draft), { primary: true }), btn('Cancel', () => navigate('devices', { topic: d.topic })), btn('Raw JSON', () => rawEditor('platform.driver', d.entry))]
     : [btn('Edit', () => navigate('devices', { topic: d.topic, edit: 1 })), btn('Raw JSON', () => rawEditor('platform.driver', d.entry)), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }, { header: 'This device' },
@@ -79,7 +100,7 @@ function renderDevice(main, ctx, d, editing) {
     ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })),
       healthCard([['driver', driver ? (driver.running ? '● running' : '○ stopped') : '—', driver && driver.running ? 'ok' : 'warn'], ['driver health', (driver && driver.health && driver.health.status) || '—', driver && driver.health && driver.health.status === 'GOOD' ? 'ok' : ''],
         ['context', typeof health === 'string' ? health : health ? JSON.stringify(health).slice(0, 60) : '—'], ['points', d.registry_rows ? String(d.registry_rows.length) : '—']]),
-      deviceConsumers(d), checksCard(deviceChecks(d)));
+      deviceConsumers(d), checksEl);
   }
 }
 function remoteView(schema, remote) {
@@ -98,15 +119,71 @@ function remoteView(schema, remote) {
   el.append(section('Advanced', () => grid(advanced), { collapsed: true, note: `${advanced.length} fields, ${changed ? changed + ' not at their defaults' : 'all at their defaults'}` }));
   return el;
 }
-function registryGrid(d) {
+const transformChecks = new Map();      // expression text -> the library's verdict (api.validateTransforms), shared by every grid
+
+function transformColumn(columns) { return columns.find((c) => /^transform$/i.test(c.trim())); }
+
+function pointNames(rows) { return new Set(rows.map((r) => r['Point Name'] || r['Volttron Point Name'] || r.volttron_point_name || '')); }
+
+function describeTransform(check, points) {
+  if (!check) return '';
+  if (!check.ok) return check.error;
+  const parts = [`functions: ${check.functions.join(', ') || 'none (identity)'}`];
+  if (check.references.length) parts.push(`reads: ${check.references.join(', ')}`);
+  if (check.result_type) parts.push(`yields ${check.result_type}`);
+  if (!check.invertible) parts.push(`not writable through: ${check.non_invertible.join(', ')} has no inverse`);
+  if (check.defines_value) parts.push('derived point: its own value is not used');
+  const unknown = check.references.filter((r) => points && !points.has(r));
+  if (unknown.length) parts.push(`not in this registry: ${unknown.join(', ')}`);
+  return parts.join('\n');
+}
+
+function transformCellClass(check, points) {
+  if (!check) return '';
+  if (!check.ok) return 'err';
+  return check.references.some((r) => points && !points.has(r)) ? 'warn' : 'ok';
+}
+
+async function checkTransforms(texts) {
+  const pending = [...new Set(texts)].filter((t) => t && !transformChecks.has(t));
+  if (!pending.length) return;
+  try {
+    const result = await api.validateTransforms(pending);
+    for (const [text, check] of Object.entries(result)) transformChecks.set(text, check);
+  } catch (e) {
+    for (const text of pending) transformChecks.set(text, { ok: false, error: `not checked: ${e.message || e}` });
+  }
+}
+
+function registryGrid(d, onChecked) {
   const rows = d.registry_rows;
   if (!rows) return note(d.registry ? 'the registry entry is not a CSV table' : 'no registry');
   const columns = rows.length ? Object.keys(rows[0]) : [];
-  const table = h('table', { class: 'grid-table' }, h('tr', {}, ...columns.map((c) => h('th', {}, c))), ...rows.map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|point/i.test(c) ? 'mono' : '' }, r[c] ?? '')))));
+  const transform = transformColumn(columns);
+  const points = pointNames(rows);
+  const cells = [];
+  const cell = (r, c) => {
+    const td = h('td', { class: /name|point/i.test(c) ? 'mono' : c === transform ? 'mono transform' : '' }, r[c] ?? '');
+    if (c === transform && r[c]) cells.push([td, r[c]]);
+    return td;
+  };
+  const table = h('table', { class: 'grid-table' }, h('tr', {}, ...columns.map((c) => h('th', { title: c === displayColumn(c, columns) ? undefined : `${c} in the file` }, displayColumn(c, columns)))), ...rows.map((r) => h('tr', {}, ...columns.map((c) => cell(r, c)))));
+  const annotate = () => cells.forEach(([td, text]) => { const check = transformChecks.get(text); if (!check) return; td.title = describeTransform(check, points); td.classList.remove('ok', 'warn', 'err'); const cls = transformCellClass(check, points); if (cls) td.classList.add(cls); });
+  annotate();
+  if (cells.some(([, text]) => !transformChecks.has(text))) checkTransforms(cells.map(([, text]) => text)).then(() => { annotate(); if (onChecked) onChecked(); });
   const warnings = rows.filter((r) => 'Units' in r && !r.Units && !/sf$|_SF$/.test(r['Point Name'] || '')).length;
   return h('div', {}, h('div', { class: 'note', style: { margin: '-4px 0 8px' } }, `${d.registry_shared_with.length ? 'shared with ' + d.registry_shared_with.length + ' other device' + (d.registry_shared_with.length === 1 ? '' : 's') + ' · ' : ''}${rows.length} points${warnings ? ' · ' : ''}`, warnings ? h('a', { class: 'warn' }, `⚠ ${warnings} rows without units`) : null),
     h('div', { class: 'scrollbox' }, h('div', { class: 'scrollin', style: { overflow: 'auto', maxHeight: '320px' } }, table)));
 }
+async function transformFunctionsDialog() {
+  let functions;
+  try { functions = await api.transformFunctions(); } catch (e) { return toast(`functions: ${e.message || e}`, 'err'); }
+  const table = h('table', { class: 'grid-table' }, h('tr', {}, h('th', {}, 'Function'), h('th', {}, 'Also'), h('th', {}, 'Yields'), h('th', {}, 'What it does')),
+    ...functions.map((f) => h('tr', {}, h('td', { class: 'mono' }, `${f.name}${f.signature}`), h('td', { class: 'mono' }, f.aliases.join(', ')), h('td', {}, f.result_type || ''), h('td', {}, f.doc))));
+  dialog({ title: 'Transform functions', width: 900, body: h('div', {}, note('A Transform cell holds one call, or several wrapped in transform(f1(...), f2(...)). Functions over several registers (sum_of ...) define the point from other points.'),
+    h('div', { class: 'scrollbox' }, h('div', { class: 'scrollin', style: { overflow: 'auto', maxHeight: '60vh' } }, table))), actions: [{ label: 'Close', primary: true, onClick: (c) => c() }] });
+}
+
 function deviceConsumers(d) {
   const res = state.model.resources.canonical.find((c) => c.topic === d.resource);
   const el = h('div', { class: 'card' }, h('h4', {}, 'Consumers'));
@@ -120,7 +197,17 @@ function deviceConsumers(d) {
 function deviceChecks(d) {
   const checks = [[d.registry ? 'ok' : 'warn', d.registry ? 'registry exists' : 'no registry']];
   if (d.registry && !d.registry_rows) checks.push(['warn', 'the registry entry is not a CSV table']);
-  if (d.registry_rows) { const sf = d.registry_rows.filter((r) => /_SF$/.test(r['Point Name'] || '')).map((r) => r['Point Name']); const refs = d.registry_rows.map((r) => r.Transform || '').join(' '); const missing = sf.filter((s) => false); checks.push(['ok', `${sf.length} scale factors`]); }
+  if (d.registry_rows) {
+    const column = transformColumn(Object.keys(d.registry_rows[0] || {}));
+    const texts = column ? d.registry_rows.map((r) => r[column]).filter(Boolean) : [];
+    const points = pointNames(d.registry_rows);
+    const bad = texts.filter((t) => transformChecks.get(t) && !transformChecks.get(t).ok);
+    const unknown = texts.flatMap((t) => (transformChecks.get(t)?.references || []).filter((r) => !points.has(r)));
+    if (bad.length) checks.push(['err', `${bad.length} transform expression${bad.length === 1 ? '' : 's'} the library rejects`]);
+    if (unknown.length) checks.push(['warn', `transforms read points not in this registry: ${[...new Set(unknown)].join(', ')}`]);
+    if (texts.length && !bad.length && !unknown.length && texts.every((t) => transformChecks.has(t))) checks.push(['ok', `${texts.length} transform expression${texts.length === 1 ? '' : 's'} compile`]);
+  }
+  if (false) { const sf = d.registry_rows.filter((r) => /_SF$/.test(r['Point Name'] || '')).map((r) => r['Point Name']); const refs = d.registry_rows.map((r) => r.Transform || '').join(' '); const missing = sf.filter((s) => false); checks.push(['ok', `${sf.length} scale factors`]); }
   if (!d.resource) checks.push(['warn', 'no canonical resource publishes this device']);
   if (d.driver_role && d.driver_role !== 'client' && d.registry_rows && !d.registry_rows.some((r) => (r['Data Source'] || '').toLowerCase() === 'server')) checks.push(['warn', 'a server role without Data Source = server rows']);
   return checks;
@@ -143,6 +230,7 @@ async function saveDevice(d, draft) {
   try {
     const config = draft.config;
     for (const k of Object.keys(config)) if (config[k] === null || config[k] === undefined) delete config[k];
+    if (config.driver_config) seedDefaults(config.driver_config, ((state.catalog || {}).interfaces || {})[config.driver_config.driver_type || d.driver_type]);
     if (draft.topic && draft.topic !== d.topic) {
       await api.putEntry('platform.driver', `devices/${draft.topic}`, { type: 'json', data: config });
       await api.deleteEntry('platform.driver', d.entry);
@@ -171,7 +259,7 @@ function addDevice() {
       try {
         const registry = form.registry || `registry_configs/${form.topic.split('/').pop()}.csv`;
         if (!form.registry) await api.putEntry('platform.driver', registry, { type: 'csv', text: 'Point Name,Address,Data Type,Writable,Data Source,Units\n' });
-        await api.putEntry('platform.driver', `devices/${form.topic}`, { type: 'json', data: { registry_config: `config://${registry}`, driver_config: { driver_type: form.driver_type, driver_role: 'client' }, driver_type: form.driver_type } });
+        await api.putEntry('platform.driver', `devices/${form.topic}`, { type: 'json', data: { registry_config: `config://${registry}`, driver_config: seedDefaults({ driver_type: form.driver_type, driver_role: 'client' }, ((state.catalog || {}).interfaces || {})[form.driver_type]), driver_type: form.driver_type } });
         close(); toast('device created', 'ok'); await refreshModel(false); navigate('devices', { topic: form.topic, edit: 1 });
       } catch (e) { toast(e.message, 'err'); } } }] });
 }
@@ -261,7 +349,7 @@ function reviewDialog(result, form) {
   const registry = entries.find((e) => e.type === 'csv');
   const rows = (registry && registry.data) || [];
   const columns = rows.length ? Object.keys(rows[0]) : [];
-  const grid = h('table', {}, h('tr', {}, ...columns.map((c) => h('th', {}, c))), ...rows.slice(0, 300).map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|address|index/i.test(c) ? 'mono' : '' }, String(r[c] ?? ''))))));
+  const grid = h('table', {}, h('tr', {}, ...columns.map((c) => h('th', { title: c === displayColumn(c, columns) ? undefined : `${c} in the file` }, displayColumn(c, columns)))), ...rows.slice(0, 300).map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|address|index/i.test(c) ? 'mono' : '' }, String(r[c] ?? ''))))));
   const identity = Object.entries(result.identity || {}).map(([k, v]) => `${k} ${v}`).join(' · ');
   const summary = h('div', { class: 'note', style: { marginBottom: '8px' } }, identity ? `${identity} · ` : '', result.models ? `models ${result.models.join(', ')} · ` : '', `${result.points ?? rows.length} points`);
   if (result.remote_id) summary.append(' · device UAI ', uai(result.remote_id, { size: 'small' }));
@@ -274,6 +362,8 @@ function reviewDialog(result, form) {
     h('div', { style: { overflow: 'auto', maxHeight: '240px', border: '1px solid var(--line)', borderRadius: '6px' } }, grid),
     (result.notes || []).length ? h('div', { class: 'note', style: { marginTop: '8px' } }, 'Notes: ', (result.notes || []).join(' · ')) : null),
     actions: [{ label: '◂ Back', onClick: (c) => { c(); discoverDialog(); } }, { label: 'Add to pending changes ▸', primary: true, onClick: async (c) => {
-      try { await api.addPending(entries); toast('added to the pending set', 'ok'); c(); await refreshModel(false); navigate('pending'); } catch (e) { toast(e.message, 'err'); }
+      try {
+        for (const e of entries) if (e.identity === 'platform.driver' && e.data && e.data.driver_config) seedDefaults(e.data.driver_config, ((state.catalog || {}).interfaces || {})[e.data.driver_config.driver_type || e.data.driver_type]);
+        await api.addPending(entries); toast('added to the pending set', 'ok'); c(); await refreshModel(false); navigate('pending'); } catch (e) { toast(e.message, 'err'); }
     } }] });
 }

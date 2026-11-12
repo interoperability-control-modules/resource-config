@@ -42,7 +42,7 @@ async def test_config_entries_are_typed_from_their_text(vui):
     device = await vui.get_config('platform.driver', 'devices/matrix/SunSpec/client')
     assert device.type == 'json' and device.data['driver_type'] == 'modbus' and device.etag.startswith('"')
     registry = await vui.get_config('platform.driver', 'registry_configs/sunspec_client.csv')
-    assert registry.type == 'csv' and registry.data[0]['Point Name'] == '701_W' and len(registry.data) == 2
+    assert registry.type == 'csv' and registry.data[0]['Point Name'] == '701_W' and len(registry.data) == 3
 
 
 async def test_put_and_delete_round_trip(vui, fake_platform):
