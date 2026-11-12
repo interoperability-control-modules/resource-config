@@ -1,4 +1,4 @@
-"""Run the UI against the in-process fake platform, for development and browser checks.
+"""Run the UI against the in-process fake platform, for development; the browser tests start this same app.
 
     python tests/dev_server.py [port]
 
@@ -34,13 +34,6 @@ async def dev_login(request: Request):
     response = RedirectResponse(request.query_params.get('next', '/ui/'))
     response.set_cookie(COOKIE, cookie, httponly=True, samesite='strict')
     return response
-
-
-@app.get('/dev/check', include_in_schema=False)
-async def dev_check():
-    # A page that drives the UI in an iframe and prints what it finds, for headless browser checks.
-    from fastapi.responses import HTMLResponse
-    return HTMLResponse((Path(__file__).parent / 'dev_check.html').read_text())
 
 
 if __name__ == '__main__':

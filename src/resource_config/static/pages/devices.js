@@ -10,7 +10,12 @@ const DEVICE_FIELDS = ['registry_config', 'interval', 'polling_group', 'group', 
   'publish_depth_first_single', 'publish_breadth_first_single', 'all_publish_interval', 'equipment_specific_fields', 'driver_config', 'driver_type', 'driver_role', 'heart_beat_point'];
 
 export function render({ side, main, ctx, params }) {
-  if (params.discover && !document.querySelector('.dialog')) setTimeout(discoverDialog, 0);   // #/devices?discover=1 opens the dialog
+  if (params.discover && !document.querySelector('.dialog')) {   // #/devices?discover=1 opens the dialog once; the flag leaves the route so later renders do not reopen it
+    delete params.discover;
+    const rest = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    history.replaceState(null, '', `#/devices${rest ? '?' + rest : ''}`);
+    setTimeout(discoverDialog, 0);
+  }
   const devices = state.model.devices;
   const selected = devices.find((d) => d.topic === params.topic) || devices[0];
   if (side) side.append(tree(devices, selected && selected.topic));

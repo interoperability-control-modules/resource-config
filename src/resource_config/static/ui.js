@@ -121,7 +121,10 @@ export function dialog({ title, body, actions = [], width = 760 }) {
     if (e.key === 'Escape') { e.preventDefault(); close(); return; }
     if (e.key !== 'Enter' || e.target.tagName === 'TEXTAREA' || e.target.closest('.btn') || e.altKey || e.ctrlKey || e.metaKey) return;
     const primary = box.querySelector('.btn.pri:not(.dis)');
-    if (primary) { e.preventDefault(); e.target.blur(); primary.click(); }    // blur first so a pending change event lands in the form
+    if (primary) {
+      e.preventDefault(); e.target.blur(); primary.click();    // blur first so a pending change event lands in the form
+      if (document.body.contains(box) && document.activeElement === document.body) e.target.focus();    // the dialog stayed (validation failed): keep the keyboard in it so Escape still closes
+    }
   });
   document.body.append(overlay);
   setTimeout(() => { const first = box.querySelector('input:not([type=checkbox]):not([type=radio]), select, textarea'); if (first) first.focus(); }, 0);
