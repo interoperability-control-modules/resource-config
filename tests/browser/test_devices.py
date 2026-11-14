@@ -115,6 +115,11 @@ def test_discover_reviews_then_fills_and_applies_the_pending_set(ui):
     ui.go('#/devices?topic=' + quote('site9/pv_test', safe=''))
     expect(ui.page.locator('#main .rc .row1')).to_contain_text('devices/site9/pv_test')
     expect(ui.page.locator('#side .leaf', has_text='pv_test')).to_be_visible()
+    # the discovered entry keeps its remote settings under remote_config; the card and its edit form show them
+    expect(ui.page.locator('#main')).to_contain_text('10.0.0.21')
+    ui.button('Edit', ui.page.locator('.rc')).click()
+    assert '10.0.0.21' in ui.page.locator('#main input').evaluate_all('es => es.map((e) => e.value)'), 'the edit form is filled from remote_config'
+    ui.button('Cancel').click()
 
 
 def test_discover_dnp3_scans_an_outstation_or_takes_a_profile_file(ui):

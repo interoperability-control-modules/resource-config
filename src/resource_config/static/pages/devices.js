@@ -61,8 +61,11 @@ function renderDevice(main, ctx, d, editing) {
   const iface = catalog.interfaces[d.driver_type] || null;
   const deviceSchema = catalog.schemas['driver/device'] || { properties: {} };
   const draft = { config: JSON.parse(JSON.stringify(d.config || {})) };
-  draft.config.driver_config = draft.config.driver_config || {};
-  const remote = draft.config.driver_config;
+  // The driver takes the remote's settings under remote_config (what Discover and icmstack write) or driver_config
+  // (older entries); the form edits whichever the entry has, in place, and a new entry gets remote_config.
+  const remoteKey = remoteKeyOf(draft.config);
+  draft.config[remoteKey] = draft.config[remoteKey] || {};
+  const remote = draft.config[remoteKey];
   const remoteId = remoteIdOf(d);
   const groupDefaults = ((state.model.agents || []).find((a) => a.identity === 'platform.driver') || {});
   const deviceBody = kv([
@@ -219,6 +222,8 @@ function remoteIdOf(d) {
   if (d.driver_type === 'ieee2030_5') return ['2030.5', r.server_url || r.host || r.bind_host || '?'];
   return [d.driver_type || '?', ...Object.values(r).filter((v) => typeof v === 'string' || typeof v === 'number').slice(0, 3).map(String)];
 }
+export const remoteKeyOf = (config) => (config && config.remote_config && typeof config.remote_config === 'object' ? 'remote_config'
+  : config && config.driver_config && typeof config.driver_config === 'object' ? 'driver_config' : 'remote_config');
 const serverWord = (type) => ({ modbus: 'slave', dnp3: 'outstation', ieee2030_5: 'server', bacnet: 'device' }[type] || 'server');
 const roleLabel = (role, type) => !role || role === 'client' || role === 'master' ? 'client (master)' : `server (${role})`;
 const prettify = (n) => n.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
@@ -230,7 +235,8 @@ async function saveDevice(d, draft) {
   try {
     const config = draft.config;
     for (const k of Object.keys(config)) if (config[k] === null || config[k] === undefined) delete config[k];
-    if (config.driver_config) seedDefaults(config.driver_config, ((state.catalog || {}).interfaces || {})[config.driver_config.driver_type || d.driver_type]);
+    const remoteConfig = config[remoteKeyOf(config)];
+    if (remoteConfig) seedDefaults(remoteConfig, ((state.catalog || {}).interfaces || {})[remoteConfig.driver_type || d.driver_type]);
     if (draft.topic && draft.topic !== d.topic) {
       await api.putEntry('platform.driver', `devices/${draft.topic}`, { type: 'json', data: config });
       await api.deleteEntry('platform.driver', d.entry);
@@ -259,7 +265,7 @@ function addDevice() {
       try {
         const registry = form.registry || `registry_configs/${form.topic.split('/').pop()}.csv`;
         if (!form.registry) await api.putEntry('platform.driver', registry, { type: 'csv', text: 'Point Name,Address,Data Type,Writable,Data Source,Units\n' });
-        await api.putEntry('platform.driver', `devices/${form.topic}`, { type: 'json', data: { registry_config: `config://${registry}`, driver_config: seedDefaults({ driver_type: form.driver_type, driver_role: 'client' }, ((state.catalog || {}).interfaces || {})[form.driver_type]), driver_type: form.driver_type } });
+        await api.putEntry('platform.driver', `devices/${form.topic}`, { type: 'json', data: { registry_config: `config://${registry}`, remote_config: seedDefaults({ driver_type: form.driver_type, driver_role: 'client' }, ((state.catalog || {}).interfaces || {})[form.driver_type]), driver_type: form.driver_type } });
         close(); toast('device created', 'ok'); await refreshModel(false); navigate('devices', { topic: form.topic, edit: 1 });
       } catch (e) { toast(e.message, 'err'); } } }] });
 }
@@ -386,7 +392,10 @@ function reviewDialog(result, form) {
     (result.notes || []).length ? h('div', { class: 'note', style: { marginTop: '8px' } }, 'Notes: ', (result.notes || []).join(' · ')) : null),
     actions: [{ label: '◂ Back', onClick: (c) => { c(); discoverDialog(); } }, { label: 'Add to pending changes ▸', primary: true, onClick: async (c) => {
       try {
-        for (const e of entries) if (e.identity === 'platform.driver' && e.data && e.data.driver_config) seedDefaults(e.data.driver_config, ((state.catalog || {}).interfaces || {})[e.data.driver_config.driver_type || e.data.driver_type]);
+        for (const e of entries) {
+          const remoteConfig = e.identity === 'platform.driver' && e.data ? e.data[remoteKeyOf(e.data)] : null;
+          if (remoteConfig) seedDefaults(remoteConfig, ((state.catalog || {}).interfaces || {})[remoteConfig.driver_type || e.data.driver_type]);
+        }
         await api.addPending(entries); toast('added to the pending set', 'ok'); c(); await refreshModel(false); navigate('pending'); } catch (e) { toast(e.message, 'err'); }
     } }] });
 }

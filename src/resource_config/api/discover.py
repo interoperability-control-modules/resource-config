@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from ..auth import Session, current_session
 from ..platform.base import PlatformError
+from .pending import fragment_summary
 from ..relations import topic_of, uai_of
 
 router = APIRouter(tags=['discover'])
@@ -45,8 +46,9 @@ async def discover(body: Discover, request: Request, session: Session = Depends(
         if 'fragment' in entry:
             current = store.get(entry['identity'], entry['name'])
             merged = merge_fragment(current.data if current and isinstance(current.data, dict) else None, entry['fragment'])
-            entries.append({'identity': entry['identity'], 'name': entry['name'], 'type': 'json', 'data': merged,
-                            'summary': f"format {', '.join((entry['fragment'].get('formats') or {}).keys())}, {len(entry['fragment'].get('transforms') or [])} transforms, {len(entry['fragment'].get('mappings') or [])} mappings"})
+            # data is the preview; the fragment itself travels with the pending entry and is folded in when applied
+            entries.append({'identity': entry['identity'], 'name': entry['name'], 'type': 'json', 'data': merged, 'fragment': entry['fragment'],
+                            'summary': fragment_summary(entry['fragment'])})
         else:
             summary = f"{len(entry.get('data') or [])} points" if entry.get('type') == 'csv' else 'device entry'
             entries.append({**entry, 'summary': summary})

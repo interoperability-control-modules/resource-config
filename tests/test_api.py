@@ -145,3 +145,21 @@ def test_transform_functions_are_listed_for_completion(logged_in):
 
 def test_validation_needs_a_login(ui):
     assert ui.post('/api/interop/validate_transforms', json={'texts': ['scale(1)']}).status_code in (401, 403)
+
+
+def test_two_discoveries_pending_at_once_both_reach_the_service_config(logged_in):
+    """Each Discover adds to the service's one config entry. Pending together, the second must not replace the first:
+    the fragments are merged on the pending entry and folded into the entry as it stands when applied."""
+    first = logged_in.post('/api/discover', json={'protocol': 'sunspec', 'options': {'topic': 'site9/pv_a', 'host': '10.0.0.21'}}).json()
+    assert logged_in.post('/api/pending', json=first['entries']).status_code == 200
+    second = logged_in.post('/api/discover', json={'protocol': 'sunspec', 'options': {'topic': 'site9/pv_b', 'host': '10.0.0.22'}}).json()
+    pending = logged_in.post('/api/pending', json=second['entries']).json()['entries']
+    service_entries = [e for e in pending if e['identity'] == 'platform.presentation']
+    assert len(service_entries) == 1 and service_entries[0]['fragment'] and '2 mappings' in service_entries[0]['summary']
+    assert logged_in.post('/api/pending/apply').status_code == 200
+    config = logged_in.get('/api/store/platform.presentation/config').json()['data']
+    topics = {'/'.join(m['uai']) for m in config['mappings']}
+    assert {'devices/site9/pv_a', 'devices/site9/pv_b'} <= topics, topics
+    model = logged_in.get('/api/model?refresh=true').json()
+    resources = {d['topic']: d['resource'] for d in model['devices']}
+    assert resources['site9/pv_a'] and resources['site9/pv_b'], 'both devices have their canonical resource'
