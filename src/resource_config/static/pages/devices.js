@@ -295,7 +295,7 @@ async function deleteRegistry(name) { try { await api.deleteEntry('platform.driv
 
 // Discover (design DS1/DS2): Source asks for what the generator needs; Review is read-only; the result is one pending set.
 function discoverDialog() {
-  const form = { protocol: 'sunspec', source: 'unit', host: '', port: '', unit: 1, role: 'client', scaling: 'transform', topic: '', publish: 'multi', interval: '', registry_name: '', file: null, device_format: '' };
+  const form = { protocol: 'sunspec', source: 'unit', dnp3_source: 'outstation', host: '', port: '', unit: 1, master_id: '', outstation_id: '', role: 'client', scaling: 'transform', topic: '', publish: 'multi', interval: '', registry_name: '', file: null, device_format: '' };
   const where = h('div', { class: 'grid kv1' });
   const fileInput = () => h('input', { type: 'file', accept: '.json', onChange: (e) => (form.file = e.target.files[0]) });
   const renderWhere = () => {
@@ -310,10 +310,16 @@ function discoverDialog() {
         h('span', { class: 'k' }, 'Scale factors ', info("transform: the device format's transform applies the scale factors; driver: each point scales itself with scale_sf() in its Transform column.")),
         select(form.scaling, [['transform', 'transform'], ['driver', 'driver']], { onChange: (v) => (form.scaling = v), width: '200px' }));
     }
-    if (form.protocol === 'dnp3') where.append(
-      h('span', { class: 'k' }, 'Profile ', info('An IEEE 1815.2 device profile (JSON) from the test tool or the vendor.')), fileInput(),
-      h('span', { class: 'k' }, 'Outstation'), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.host, { mono: true, width: '180px', placeholder: '127.0.0.1', onChange: (v) => (form.host = v) }), input(form.port, { num: true, width: '90px', placeholder: '20000', onChange: (v) => (form.port = v) })),
-      h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (outstation)']], (v) => (form.role = v)));
+    if (form.protocol === 'dnp3') {
+      // IEEE 1815.2 fixes what every index means; a device adds only which indexes it has. An integrity poll of a
+      // reachable outstation lists them; a device profile file (the test tool's JSON) does the same for one not reachable yet.
+      where.append(h('span', { class: 'k' }, 'Source'), radios('disc-dnp3-src', form.dnp3_source, [['outstation', 'a reachable outstation'], ['file', 'an IEEE 1815.2 profile file']], (v) => { form.dnp3_source = v; renderWhere(); }));
+      if (form.dnp3_source === 'file') where.append(h('span', { class: 'k' }, 'Profile ', info('An IEEE 1815.2 device profile (JSON) from the test tool or the vendor: its point list stands in for the scan.')), fileInput());
+      where.append(
+        h('span', { class: 'k' }, 'Outstation'), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.host, { mono: true, width: '180px', placeholder: '127.0.0.1', onChange: (v) => (form.host = v) }), input(form.port, { num: true, width: '90px', placeholder: '20000', onChange: (v) => (form.port = v) })),
+        h('span', { class: 'k' }, 'Master · outstation ids ', info('The DNP3 link addresses: this master\'s and the outstation\'s.')), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.master_id, { num: true, width: '70px', placeholder: '2', onChange: (v) => (form.master_id = v) }), input(form.outstation_id, { num: true, width: '70px', placeholder: '1', onChange: (v) => (form.outstation_id = v) })),
+        h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (outstation)']], (v) => (form.role = v)));
+    }
     if (form.protocol === 'ieee2030_5') where.append(
       h('span', { class: 'k' }, 'Device to mirror ', info('The 2030.5 point map is derived from the format of the resource another device publishes.')),
       select('', state.model.devices.filter((d) => d.resource).map((d) => [d.topic, d.topic]), { blank: 'choose…', width: '320px', onChange: (v) => { const d = state.model.devices.find((x) => x.topic === v); const res = d && state.model.resources.canonical.find((c) => c.topic === d.resource); form.device_format = res ? res.format : ''; } }),
@@ -337,7 +343,14 @@ function discoverDialog() {
       if (form.source === 'file') { if (!form.file) return toast('choose a scan file', 'err'); options.device_json = await form.file.text(); }
       else { if (!form.host) return toast('an address is required', 'err'); options.host = form.host; options.port = Number(form.port) || 502; options.unit = Number(form.unit) || 1; }
     }
-    if (form.protocol === 'dnp3') { if (!form.file) return toast('choose a profile', 'err'); options.profile_json = await form.file.text(); if (form.host) options.outstation_ip = form.host; if (form.port) options.port = Number(form.port); }
+    if (form.protocol === 'dnp3') {
+      if (form.dnp3_source === 'file') { if (!form.file) return toast('choose a profile file', 'err'); options.profile_json = await form.file.text(); }
+      else if (!form.host) return toast('an outstation address is required', 'err');
+      if (form.host) options.outstation_ip = form.host;
+      if (form.port) options.port = Number(form.port);
+      if (form.master_id !== '') options.master_id = Number(form.master_id);
+      if (form.outstation_id !== '') options.outstation_id = Number(form.outstation_id);
+    }
     if (form.protocol === 'ieee2030_5') { if (!form.device_format) return toast('choose the device to mirror', 'err'); options.device_format = form.device_format; if (form.host) options.server_url = form.host; }
     toast('scanning…');
     try { const result = await api.discover(form.protocol, options); close(); reviewDialog(result, form); } catch (e) { toast(`discovery failed: ${e.message}`, 'err'); }

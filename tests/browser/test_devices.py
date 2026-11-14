@@ -115,3 +115,26 @@ def test_discover_reviews_then_fills_and_applies_the_pending_set(ui):
     ui.go('#/devices?topic=' + quote('site9/pv_test', safe=''))
     expect(ui.page.locator('#main .rc .row1')).to_contain_text('devices/site9/pv_test')
     expect(ui.page.locator('#side .leaf', has_text='pv_test')).to_be_visible()
+
+
+def test_discover_dnp3_scans_an_outstation_or_takes_a_profile_file(ui):
+    """DNP3 has no self-description, but IEEE 1815.2 fixes the point map: the dialog scans a reachable outstation by
+    default and offers a profile file as the alternative; the link addresses are asked in both cases."""
+    ui.go('#/devices?discover=1')
+    dialog = ui.dialog
+    dialog.locator('select').first.select_option('dnp3')
+    expect(dialog.locator('label.chk', has_text='a reachable outstation').locator('input.rad')).to_be_checked()
+    expect(dialog.locator('input[type=file]')).to_have_count(0)
+    expect(dialog.locator('input[placeholder="20000"]')).to_be_visible()
+    expect(dialog.locator('input[placeholder="2"]')).to_be_visible()
+    ui.button('Scan and review ▸', dialog).click()
+    expect(ui.toast('a topic is required')).to_be_visible()
+    dialog.locator('input[placeholder="site1/feeder1/pv_inverter"]').fill('site9/der')
+    ui.page.keyboard.press('Tab')
+    ui.button('Scan and review ▸', dialog).click()
+    expect(ui.toast('an outstation address is required')).to_be_visible()
+    dialog.locator('label.chk', has_text='profile file').locator('input.rad').check()
+    expect(dialog.locator('input[type=file]')).to_have_count(1)
+    ui.button('Scan and review ▸', dialog).click()
+    expect(ui.toast('choose a profile file')).to_be_visible()
+    ui.cancel()

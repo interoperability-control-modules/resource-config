@@ -203,7 +203,7 @@ Sessions live in the UI process: after a restart of the UI, users sign in again 
 | Agents | the four agents installed | state and health for each; start, stop, enable and disable work |
 | Resources, Formats, Transforms | the service running, `rpc-allow-list` naming it | bundled and local formats and transforms; chain report and pattern Check answer; the transform drill-down is populated |
 | Devices | the driver and a device | tree by topic, device card with the interface's layout hints, registry grid, Switch registry / Copy as new / Import / Export |
-| Discover | the protocol's interface, proxy and manifest, plus a reachable device; SunSpec also needs the `discovery` extra | one pending set with the device's remote id |
+| Discover | the protocol's interface, proxy and manifest, plus a reachable device; SunSpec and DNP3 scans need the service's `discovery` extra (pysunspec2, dnp3py). A DNP3 outstation is scanned with an integrity poll; an IEEE 1815.2 profile file stands in for one that is not reachable yet | one pending set with the device's remote id |
 | Bridges and Activity | Resource Bridge and bus adapter running, a broker, `platform.resource_bridge: statistics` allowed | bridges and remote topics listed, Activity card updating |
 | Pending changes | the `authz` grant of step 3 | saves succeed (403 without the grant); change detection uses the web service's `metadata=true` listings and `ETag` headers when it offers them, hash comparison of contents otherwise |
 
