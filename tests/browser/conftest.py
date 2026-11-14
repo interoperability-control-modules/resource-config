@@ -43,7 +43,9 @@ def ui_url():
     with socket.socket() as probe:
         probe.bind(('127.0.0.1', 0))
         port = probe.getsockname()[1]
-    server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=port, log_level='warning'))
+    import os
+    verbose = bool(os.environ.get('UI_TEST_ACCESS_LOG'))     # UI_TEST_ACCESS_LOG=1 pytest -s: every request the server answers, with timing of the stalls
+    server = uvicorn.Server(uvicorn.Config(app, host='127.0.0.1', port=port, log_level='info' if verbose else 'warning', access_log=verbose))
     thread = threading.Thread(target=lambda: asyncio.run(server.serve()), daemon=True)   # serve(), not run(): no signal handlers off the main thread
     thread.start()
     deadline = time.monotonic() + 15
@@ -115,7 +117,9 @@ def ui(page: 'Page', ui_url: str):
     except PlaywrightTimeoutError:
         # Seen once in many runs: the page stayed on its placeholder after the login redirect. Record what it showed,
         # reload once, and only then fail, so a repeat tells us what the page was doing.
-        state = page.evaluate("() => ({login: !document.getElementById('login').classList.contains('hidden'), main: document.getElementById('main').innerText.slice(0, 200), toasts: document.getElementById('toasts').innerText})")
+        state = page.evaluate("""() => ({login: !document.getElementById('login').classList.contains('hidden'), main: document.getElementById('main').innerText.slice(0, 200),
+            toasts: document.getElementById('toasts').innerText,
+            completed: performance.getEntriesByType('resource').map((e) => e.name.replace(location.origin, '') + ' ' + Math.round(e.duration) + 'ms')})""")
         page.reload()
         try:
             page.locator('#main .rc').first.wait_for(timeout=15000)
