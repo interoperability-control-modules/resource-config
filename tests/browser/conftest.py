@@ -19,6 +19,7 @@ import pytest
 
 try:
     from playwright.sync_api import Locator, Page, expect
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 except ImportError:  # pragma: no cover - the browser extra is optional
     collect_ignore_glob = ['test_*.py']
 
@@ -37,7 +38,8 @@ def pytest_collection_modifyitems(items):
 def ui_url():
     """The UI served over the fake platform, for the whole session."""
     import uvicorn
-    from dev_server import app
+    from dev_server import make_app
+    app = make_app(poll=False)        # no background poller: the tests refresh the model themselves, and nothing races their requests
     with socket.socket() as probe:
         probe.bind(('127.0.0.1', 0))
         port = probe.getsockname()[1]
@@ -108,7 +110,18 @@ def ui(page: 'Page', ui_url: str):
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.set_viewport_size({'width': 1400, 'height': 900})
     page.goto(f'{ui_url}/dev/login?next={quote("/ui/#/resources", safe="")}')
-    page.locator('#main .rc').first.wait_for()
+    try:
+        page.locator('#main .rc').first.wait_for(timeout=15000)
+    except PlaywrightTimeoutError:
+        # Seen once in many runs: the page stayed on its placeholder after the login redirect. Record what it showed,
+        # reload once, and only then fail, so a repeat tells us what the page was doing.
+        state = page.evaluate("() => ({login: !document.getElementById('login').classList.contains('hidden'), main: document.getElementById('main').innerText.slice(0, 200), toasts: document.getElementById('toasts').innerText})")
+        page.reload()
+        try:
+            page.locator('#main .rc').first.wait_for(timeout=15000)
+        except PlaywrightTimeoutError:
+            pytest.fail(f'the UI did not render after the dev login, twice; the page showed {state} and errors {errors}')
+        print(f'note: the UI needed a reload after the dev login; it had shown {state}')
     yield UI(page, ui_url)
     assert errors == [], f'uncaught errors in the page: {errors}'
 
