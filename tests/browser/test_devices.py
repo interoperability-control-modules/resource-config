@@ -172,3 +172,20 @@ def test_discover_dnp3_addresses_have_their_own_labelled_rows(ui):
     master_box = dialog.locator('input[placeholder="2"]')
     assert abs(master_label.bounding_box()['y'] - master_box.bounding_box()['y']) < 12, 'label and box share a row'
     ui.cancel()
+
+
+def test_edit_form_shows_role_gated_fields_when_the_entry_has_no_role(ui):
+    """A discovered DNP3 client carries no driver_role; the driver's default (master) must gate the form the way it
+    gates the card, so the outstation address is editable."""
+    entry = {'driver_type': 'dnp3', 'registry_config': 'config://registry_configs/dnp3_served.csv', 'publish_depth_first_multi': True,
+             'remote_config': {'driver_type': 'dnp3', 'outstation_ip': '10.0.0.9', 'port': 20000, 'master_id': 2, 'outstation_id': 1}}
+    response = ui.page.request.put(f'{ui.url}/api/store/platform.driver/devices/matrix/DNP3/scanned', data={'type': 'json', 'data': entry})
+    assert response.ok, response.text()
+    ui.page.locator('#statusbar').get_by_text('refresh now').click()
+    ui.go('#/devices?topic=' + quote('matrix/DNP3/scanned', safe='') + '&edit=1')
+    expect(ui.page.locator('#main .rc .row1')).to_contain_text('devices/matrix/DNP3/scanned')
+    values = ui.page.locator('#main input:visible').evaluate_all('es => es.map((e) => e.value)')
+    assert '10.0.0.9' in values, f'the outstation address field is shown and filled: {values}'
+    labels = [' '.join(k.inner_text().split()) for k in ui.page.locator('#main .k:visible').all()]
+    assert any(l.startswith('Outstation ip') for l in labels) and not any(l.startswith('Bind host') for l in labels)
+    ui.button('Cancel').click()

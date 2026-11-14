@@ -233,7 +233,9 @@ export function schemaForm(schema, value, { onChange, hide = [], groups = null, 
       const control = controlFor(name, prop, defs, state[name], hint, defaults[name], (v) => { state[name] = v; onChange && onChange(name, v, state); });
       const label = labelled(prettyName(name), hint.tooltip);
       const matches = (v, actual) => (Array.isArray(v) ? v.map(String).includes(actual) : String(v) === actual);
-      const show = hint.show_when ? () => Object.entries(hint.show_when).every(([k, v]) => matches(v, String(state[k] ?? defaults[k] ?? ''))) : null;
+      // A gating field the entry does not carry takes the schema's default, as the card's read-only view does (a
+      // discovered DNP3 client has no driver_role; the driver's default is master, which shows the outstation address).
+      const show = hint.show_when ? () => Object.entries(hint.show_when).every(([k, v]) => matches(v, String(state[k] ?? defaults[k] ?? (props[k] || {}).default ?? ''))) : null;
       const row = [label, h('span', { class: 'v', style: { display: 'flex', alignItems: 'center', gap: '6px' } }, control, hint.unit ? note(hint.unit) : null)];
       if (show) { const update = () => row.forEach((r) => r.classList.toggle('hidden', !show())); update(); container.addEventListener('rc:change', update); }
       grid.append(...row);
