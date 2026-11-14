@@ -138,3 +138,32 @@ def test_discover_dnp3_scans_an_outstation_or_takes_a_profile_file(ui):
     ui.button('Scan and review ▸', dialog).click()
     expect(ui.toast('choose a profile file')).to_be_visible()
     ui.cancel()
+
+
+def test_discover_2030_5_asks_for_the_device_to_mirror_and_explains_when_there_is_none(ui):
+    """The 2030.5 client represents another device towards the server; its registry comes from that device's resource
+    format. With resources present the dialog offers them; the controls stay inside their column."""
+    ui.go('#/devices?discover=1')
+    dialog = ui.dialog
+    dialog.locator('select').first.select_option('ieee2030_5')
+    mirror = dialog.locator('select').nth(1)
+    expect(mirror).to_be_visible()
+    options = mirror.locator('option').all_inner_texts()
+    assert 'matrix/SunSpec/client' in options and options[0] == 'choose…'
+    expect(dialog.locator('[data-tip*="discover the device first"]')).to_have_count(1)
+    left_column = dialog.locator('.two > div').first
+    column_box, select_box = left_column.bounding_box(), mirror.bounding_box()
+    assert select_box['x'] + select_box['width'] <= column_box['x'] + column_box['width'] + 1, 'the choice box does not run into the right column'
+    ui.cancel()
+
+
+def test_discover_dnp3_addresses_have_their_own_labelled_rows(ui):
+    ui.go('#/devices?discover=1')
+    dialog = ui.dialog
+    dialog.locator('select').first.select_option('dnp3')
+    labels = [' '.join(k.inner_text().split()) for k in dialog.locator('.two > div').first.locator('.k').all()]
+    assert 'Master id ⓘ' in labels and 'Outstation id ⓘ' in labels and 'Outstation address' in labels and 'Port' in labels
+    master_label = dialog.locator('.k', has_text='Master id')
+    master_box = dialog.locator('input[placeholder="2"]')
+    assert abs(master_label.bounding_box()['y'] - master_box.bounding_box()['y']) < 12, 'label and box share a row'
+    ui.cancel()

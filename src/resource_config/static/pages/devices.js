@@ -304,7 +304,8 @@ function discoverDialog() {
       where.append(h('span', { class: 'k' }, 'Source'), radios('disc-src', form.source, [['unit', 'a reachable unit'], ['file', 'a pysunspec2 scan file']], (v) => { form.source = v; renderWhere(); }));
       if (form.source === 'unit') where.append(
         h('span', { class: 'k' }, 'Address'), input(form.host, { mono: true, width: '220px', placeholder: '192.168.1.20', onChange: (v) => (form.host = v) }),
-        h('span', { class: 'k' }, 'Port · unit'), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.port, { num: true, width: '90px', placeholder: '502', onChange: (v) => (form.port = v) }), input(form.unit, { num: true, width: '70px', onChange: (v) => (form.unit = v) })));
+        h('span', { class: 'k' }, 'Port'), input(form.port, { num: true, width: '90px', placeholder: '502', onChange: (v) => (form.port = v) }),
+        h('span', { class: 'k' }, 'Unit id'), input(form.unit, { num: true, width: '90px', onChange: (v) => (form.unit = v) }));
       else where.append(h('span', { class: 'k' }, 'Scan file'), fileInput());
       where.append(h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (slave)']], (v) => (form.role = v)),
         h('span', { class: 'k' }, 'Scale factors ', info("transform: the device format's transform applies the scale factors; driver: each point scales itself with scale_sf() in its Transform column.")),
@@ -316,15 +317,24 @@ function discoverDialog() {
       where.append(h('span', { class: 'k' }, 'Source'), radios('disc-dnp3-src', form.dnp3_source, [['outstation', 'a reachable outstation'], ['file', 'an IEEE 1815.2 profile file']], (v) => { form.dnp3_source = v; renderWhere(); }));
       if (form.dnp3_source === 'file') where.append(h('span', { class: 'k' }, 'Profile ', info('An IEEE 1815.2 device profile (JSON) from the test tool or the vendor: its point list stands in for the scan.')), fileInput());
       where.append(
-        h('span', { class: 'k' }, 'Outstation'), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.host, { mono: true, width: '180px', placeholder: '127.0.0.1', onChange: (v) => (form.host = v) }), input(form.port, { num: true, width: '90px', placeholder: '20000', onChange: (v) => (form.port = v) })),
-        h('span', { class: 'k' }, 'Master · outstation ids ', info('The DNP3 link addresses: this master\'s and the outstation\'s.')), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.master_id, { num: true, width: '70px', placeholder: '2', onChange: (v) => (form.master_id = v) }), input(form.outstation_id, { num: true, width: '70px', placeholder: '1', onChange: (v) => (form.outstation_id = v) })),
+        h('span', { class: 'k' }, 'Outstation address'), input(form.host, { mono: true, width: '100%', placeholder: '127.0.0.1', onChange: (v) => (form.host = v) }),
+        h('span', { class: 'k' }, 'Port'), input(form.port, { num: true, width: '90px', placeholder: '20000', onChange: (v) => (form.port = v) }),
+        h('span', { class: 'k' }, 'Master id ', info('The DNP3 link address this platform uses as the master.')), input(form.master_id, { num: true, width: '90px', placeholder: '2', onChange: (v) => (form.master_id = v) }),
+        h('span', { class: 'k' }, 'Outstation id ', info('The DNP3 link address of the outstation.')), input(form.outstation_id, { num: true, width: '90px', placeholder: '1', onChange: (v) => (form.outstation_id = v) }),
         h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (outstation)']], (v) => (form.role = v)));
     }
-    if (form.protocol === 'ieee2030_5') where.append(
-      h('span', { class: 'k' }, 'Device to mirror ', info('The 2030.5 point map is derived from the format of the resource another device publishes.')),
-      select('', state.model.devices.filter((d) => d.resource).map((d) => [d.topic, d.topic]), { blank: 'choose…', width: '320px', onChange: (v) => { const d = state.model.devices.find((x) => x.topic === v); const res = d && state.model.resources.canonical.find((c) => c.topic === d.resource); form.device_format = res ? res.format : ''; } }),
-      h('span', { class: 'k' }, 'Server URL'), input(form.host, { mono: true, width: '280px', placeholder: 'https://127.0.0.1:8443', onChange: (v) => (form.host = v) }),
-      h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client'], ['server', 'server']], (v) => (form.role = v)));
+    if (form.protocol === 'ieee2030_5') {
+      // The 2030.5 device in the platform is a client that represents (mirrors) a physical device towards a utility or
+      // aggregator server: it reports that device's capability, settings, status and readings and takes the server's
+      // controls for it. Its registry is derived from the format of the resource the mirrored device publishes.
+      const mirrorable = state.model.devices.filter((d) => d.resource);
+      where.append(h('span', { class: 'k' }, 'Device to mirror ', info('The 2030.5 client represents another device of this platform towards the server: it reports that device\'s capability, settings, status and readings and receives controls for it. Its registry is derived from the format of the resource that device publishes, so discover the device first.')),
+        mirrorable.length
+          ? select('', mirrorable.map((d) => [d.topic, d.topic]), { blank: 'choose…', width: '100%', onChange: (v) => { const d = state.model.devices.find((x) => x.topic === v); const res = d && state.model.resources.canonical.find((c) => c.topic === d.resource); form.device_format = res ? res.format : ''; } })
+          : note('No device publishes a resource yet. Discover the device to be represented first (the inverter, for instance); its resource\'s format decides what the 2030.5 client can report and accept.'),
+        h('span', { class: 'k' }, 'Server URL'), input(form.host, { mono: true, width: '100%', placeholder: 'https://127.0.0.1:8443', onChange: (v) => (form.host = v) }),
+        h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client'], ['server', 'server']], (v) => (form.role = v)));
+    }
   };
   renderWhere();
   const becomes = h('div', { class: 'grid kv1' },
