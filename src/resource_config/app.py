@@ -6,7 +6,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -53,6 +53,14 @@ def create_app(settings: Settings | None = None, client_factory=make_client, pol
     app.include_router(api_router())
     app.add_api_websocket_route('/ws', ws.store_events)
     app.mount('/ui', StaticFiles(directory=str(STATIC), html=True), name='ui')
+
+    @app.middleware('http')
+    async def revalidate_ui_assets(request: Request, call_next):
+        # The UI is ES modules the browser would otherwise keep across restarts; no-cache makes it ask (ETag) each load.
+        response = await call_next(request)
+        if request.url.path.startswith('/ui/'):
+            response.headers['Cache-Control'] = 'no-cache'
+        return response
 
     @app.get('/', include_in_schema=False)
     async def root():

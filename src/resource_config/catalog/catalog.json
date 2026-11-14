@@ -4,14 +4,15 @@
    "point": {
     "$defs": {
      "DataSource": {
-      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\nVIRTUAL       A point the framework holds, not the device (like a BACnet value object): its value is set by the\n              platform when the row is writable, or computed from other points by its Transform (``sum_of``,\n              ``value_of``, ``writable_bit`` ...), which may also direct its writes to a real point. Never handed\n              to the interface and never polled.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
       "enum": [
        "short_poll",
        "long_poll",
        "poll_once",
        "static",
        "never_poll",
-       "server"
+       "server",
+       "virtual"
       ],
       "title": "DataSource",
       "type": "string"
@@ -53,6 +54,11 @@
       ],
       "default": null,
       "title": "Remote Writable"
+     },
+     "Transform": {
+      "default": "",
+      "title": "Transform",
+      "type": "string"
      },
      "Unit Details": {
       "default": "",
@@ -294,6 +300,9 @@
       "advanced": true
      },
      "Remote Writable": {
+      "advanced": true
+     },
+     "Transform": {
       "advanced": true
      },
      "Unit Details": {
@@ -831,14 +840,15 @@
       "type": "string"
      },
      "DataSource": {
-      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\nVIRTUAL       A point the framework holds, not the device (like a BACnet value object): its value is set by the\n              platform when the row is writable, or computed from other points by its Transform (``sum_of``,\n              ``value_of``, ``writable_bit`` ...), which may also direct its writes to a real point. Never handed\n              to the interface and never polled.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
       "enum": [
        "short_poll",
        "long_poll",
        "poll_once",
        "static",
        "never_poll",
-       "server"
+       "server",
+       "virtual"
       ],
       "title": "DataSource",
       "type": "string"
@@ -1455,6 +1465,7 @@
      },
      "port": {
       "default": 20000,
+      "description": "TCP port: the outstation's (master) or the one to listen on (outstation).",
       "group": "Connection",
       "order": 30,
       "title": "Port",
@@ -1656,9 +1667,10 @@
       "tooltip": "Event classes each poll asks for."
      },
      "port": {
-      "advanced": true,
+      "advanced": false,
       "group": "Connection",
-      "order": 30
+      "order": 30,
+      "tooltip": "TCP port: the outstation's (master) or the one to listen on (outstation)."
      },
      "proxy_group": {
       "advanced": true,
@@ -1714,14 +1726,15 @@
    "point": {
     "$defs": {
      "DataSource": {
-      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\nVIRTUAL       A point the framework holds, not the device (like a BACnet value object): its value is set by the\n              platform when the row is writable, or computed from other points by its Transform (``sum_of``,\n              ``value_of``, ``writable_bit`` ...), which may also direct its writes to a real point. Never handed\n              to the interface and never polled.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
       "enum": [
        "short_poll",
        "long_poll",
        "poll_once",
        "static",
        "never_poll",
-       "server"
+       "server",
+       "virtual"
       ],
       "title": "DataSource",
       "type": "string"
@@ -1774,6 +1787,11 @@
       ],
       "default": "sin",
       "title": "Starting Value"
+     },
+     "Transform": {
+      "default": "",
+      "title": "Transform",
+      "type": "string"
      },
      "Type": {
       "default": "string",
@@ -1961,6 +1979,9 @@
       "advanced": true
      },
      "Starting Value": {
+      "advanced": true
+     },
+     "Transform": {
       "advanced": true
      },
      "Type": {
@@ -2156,14 +2177,15 @@
    "point": {
     "$defs": {
      "DataSource": {
-      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\nVIRTUAL       A point the framework holds, not the device (like a BACnet value object): its value is set by the\n              platform when the row is writable, or computed from other points by its Transform (``sum_of``,\n              ``value_of``, ``writable_bit`` ...), which may also direct its writes to a real point. Never handed\n              to the interface and never polled.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
       "enum": [
        "short_poll",
        "long_poll",
        "poll_once",
        "static",
        "never_poll",
-       "server"
+       "server",
+       "virtual"
       ],
       "title": "DataSource",
       "type": "string"
@@ -3814,26 +3836,37 @@
   "modbus": {
    "point": {
     "$defs": {
+     "ByteOrder": {
+      "description": "Order of the two bytes within each register. ``little`` swaps them (the proxy's byte_swap).",
+      "enum": [
+       "big",
+       "little"
+      ],
+      "title": "ByteOrder",
+      "type": "string"
+     },
      "DataSource": {
-      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+      "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\nVIRTUAL       A point the framework holds, not the device (like a BACnet value object): its value is set by the\n              platform when the row is writable, or computed from other points by its Transform (``sum_of``,\n              ``value_of``, ``writable_bit`` ...), which may also direct its writes to a real point. Never handed\n              to the interface and never polled.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
       "enum": [
        "short_poll",
        "long_poll",
        "poll_once",
        "static",
        "never_poll",
-       "server"
+       "server",
+       "virtual"
       ],
       "title": "DataSource",
       "type": "string"
      },
      "Table": {
-      "description": "The four Modbus data tables, named as the Modbus Protocol Proxy knows them.",
+      "description": "The four Modbus data tables, named as the Modbus Protocol Proxy knows them, plus ``exception_status``: the eight\ndevice-defined status bits FC07 returns, read as one integer point (no address).",
       "enum": [
        "coil",
        "discrete_input",
        "holding",
-       "input"
+       "input",
+       "exception_status"
       ],
       "title": "Table",
       "type": "string"
@@ -3874,6 +3907,11 @@
       "default": null,
       "title": "Remote Writable"
      },
+     "Transform": {
+      "default": "",
+      "title": "Transform",
+      "type": "string"
+     },
      "Unit Details": {
       "default": "",
       "title": "Unit Details",
@@ -3908,6 +3946,31 @@
      "address": {
       "title": "Address",
       "type": "integer"
+     },
+     "bit": {
+      "anyOf": [
+       {
+        "maximum": 15,
+        "minimum": 0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Bit"
+     },
+     "byte_order": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/ByteOrder"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
      },
      "count": {
       "anyOf": [
@@ -4090,11 +4153,6 @@
       ],
       "default": null
      },
-     "transform": {
-      "default": "",
-      "title": "Transform",
-      "type": "string"
-     },
      "word_order": {
       "anyOf": [
        {
@@ -4127,6 +4185,9 @@
      "Remote Writable": {
       "advanced": true
      },
+     "Transform": {
+      "advanced": true
+     },
      "Unit Details": {
       "advanced": true
      },
@@ -4144,6 +4205,12 @@
      },
      "address": {
       "advanced": false
+     },
+     "bit": {
+      "advanced": true
+     },
+     "byte_order": {
+      "advanced": true
      },
      "count": {
       "advanced": true
@@ -4207,9 +4274,6 @@
      "table": {
       "advanced": true
      },
-     "transform": {
-      "advanced": true
-     },
      "word_order": {
       "advanced": true
      }
@@ -4225,6 +4289,15 @@
        "address"
       ],
       "title": "Addressing",
+      "type": "string"
+     },
+     "ByteOrder": {
+      "description": "Order of the two bytes within each register. ``little`` swaps them (the proxy's byte_swap).",
+      "enum": [
+       "big",
+       "little"
+      ],
+      "title": "ByteOrder",
       "type": "string"
      },
      "DriverRole": {
@@ -4273,6 +4346,16 @@
       ],
       "title": "WordOrder",
       "type": "string"
+     },
+     "WriteMode": {
+      "description": "Which Modbus write functions the proxy uses for this device.\n\nauto: FC06/FC05 for one register or coil, FC16/FC15 for more; a unit that refuses one form with ILLEGAL FUNCTION\nis retried with the other and remembered. multiple: always FC16/FC15 (some meters reject FC06). single: always\nFC06/FC05, so a writable value may not span registers (modbus_tk's ``write_multiple_registers: false``).",
+      "enum": [
+       "auto",
+       "single",
+       "multiple"
+      ],
+      "title": "WriteMode",
+      "type": "string"
      }
     },
     "additionalProperties": true,
@@ -4309,6 +4392,13 @@
       },
       "title": "Bind Host",
       "type": "string"
+     },
+     "byte_order": {
+      "$ref": "#/$defs/ByteOrder",
+      "default": "big",
+      "description": "Default order of the two bytes in each register; 'little' swaps them. A point may override it.",
+      "group": "Protocol and timing",
+      "order": 75
      },
      "bytesize": {
       "advanced": true,
@@ -4394,6 +4484,14 @@
       "group": "Connection",
       "order": 20,
       "title": "Device Address"
+     },
+     "device_identification": {
+      "default": false,
+      "description": "Read the device identification (FC43: vendor, product, revision, model) when the device registers and keep it as device metadata.",
+      "group": "Device",
+      "order": 30,
+      "title": "Device Identification",
+      "type": "boolean"
      },
      "driver_role": {
       "$ref": "#/$defs/DriverRole",
@@ -4648,6 +4746,13 @@
       "description": "Default word order for multi-register values; a point may override it.",
       "group": "Protocol and timing",
       "order": 70
+     },
+     "write_mode": {
+      "$ref": "#/$defs/WriteMode",
+      "default": "auto",
+      "description": "auto: FC06/FC05 for one register or coil and FC16/FC15 for more, learning what the unit refuses; single: FC06/FC05 only; multiple: FC16/FC15 only.",
+      "group": "Protocol and timing",
+      "order": 95
      }
     },
     "required": [
@@ -4682,6 +4787,12 @@
        ]
       },
       "tooltip": "Slave over tcp, udp or tls: the interface to listen on."
+     },
+     "byte_order": {
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 75,
+      "tooltip": "Default order of the two bytes in each register; 'little' swaps them. A point may override it."
      },
      "bytesize": {
       "advanced": true,
@@ -4727,6 +4838,12 @@
       "group": "Connection",
       "order": 20,
       "tooltip": "Master: the device or gateway to reach, or the serial port. Slave over serial: the port to serve on."
+     },
+     "device_identification": {
+      "advanced": false,
+      "group": "Device",
+      "order": 30,
+      "tooltip": "Read the device identification (FC43: vendor, product, revision, model) when the device registers and keep it as device metadata."
      },
      "driver_role": {
       "advanced": false,
@@ -4869,6 +4986,12 @@
       "group": "Protocol and timing",
       "order": 70,
       "tooltip": "Default word order for multi-register values; a point may override it."
+     },
+     "write_mode": {
+      "advanced": false,
+      "group": "Protocol and timing",
+      "order": 95,
+      "tooltip": "auto: FC06/FC05 for one register or coil and FC16/FC15 for more, learning what the unit refuses; single: FC06/FC05 only; multiple: FC16/FC15 only."
      }
     }
    },
@@ -4890,6 +5013,219 @@
  "schemas": {
   "bus_adapter/config": {
    "$defs": {
+    "CodecSpec": {
+     "additionalProperties": false,
+     "description": "The wire encoding a resource's messages leave in: JSON (the default) or protobuf with the message name the\nformat declares and, when the codec depends on it, the standard's edition (an OpenFMB release).",
+     "properties": {
+      "edition": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Edition"
+      },
+      "encoding": {
+       "default": "json",
+       "enum": [
+        "json",
+        "protobuf"
+       ],
+       "title": "Encoding",
+       "type": "string"
+      },
+      "proto": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Proto"
+      }
+     },
+     "title": "CodecSpec",
+     "type": "object"
+    },
+    "LocalAlias": {
+     "additionalProperties": false,
+     "description": "An alias declared by the agent that uses it: a canonical resource's publications presented in another format\nthrough a stated chain. The chain is the stage list the service's mapping files hold and ``resolve`` returns; it\nis run as given (no path finding, no scoring, no per-field-set selection; agents that need those stay on\n``lookup``). ``write_transform`` is the chain for writing the alias's format back to the device, when the alias is\nwritten through; it is not derived from ``transform``.",
+     "properties": {
+      "canonical_uai": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Canonical Uai",
+       "type": "array"
+      },
+      "codec": {
+       "$ref": "#/$defs/CodecSpec"
+      },
+      "data_format": {
+       "title": "Data Format",
+       "type": "string"
+      },
+      "kind": {
+       "const": "alias",
+       "default": "alias",
+       "title": "Kind",
+       "type": "string"
+      },
+      "parameters": {
+       "additionalProperties": true,
+       "title": "Parameters",
+       "type": "object"
+      },
+      "publication_topic": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publication Topic"
+      },
+      "publication_topics": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Publication Topics",
+       "type": "array"
+      },
+      "rpc_topic": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Rpc Topic"
+      },
+      "target_format": {
+       "title": "Target Format",
+       "type": "string"
+      },
+      "transform": {
+       "items": {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       "title": "Transform",
+       "type": "array"
+      },
+      "uai": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Uai",
+       "type": "array"
+      },
+      "write_transform": {
+       "anyOf": [
+        {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Write Transform"
+      }
+     },
+     "required": [
+      "uai",
+      "data_format",
+      "target_format"
+     ],
+     "title": "LocalAlias",
+     "type": "object"
+    },
+    "LocalCanonical": {
+     "additionalProperties": false,
+     "description": "A canonical resource declared by the agent that uses it: a device's publications in the device's own format.\nThe chain is the identity; only subscription, assembly and the codec are involved.",
+     "properties": {
+      "codec": {
+       "$ref": "#/$defs/CodecSpec"
+      },
+      "data_format": {
+       "title": "Data Format",
+       "type": "string"
+      },
+      "kind": {
+       "const": "canonical",
+       "default": "canonical",
+       "title": "Kind",
+       "type": "string"
+      },
+      "parameters": {
+       "additionalProperties": true,
+       "title": "Parameters",
+       "type": "object"
+      },
+      "publication_topic": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publication Topic"
+      },
+      "publication_topics": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Publication Topics",
+       "type": "array"
+      },
+      "rpc_topic": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Rpc Topic"
+      },
+      "uai": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Uai",
+       "type": "array"
+      }
+     },
+     "required": [
+      "uai",
+      "data_format"
+     ],
+     "title": "LocalCanonical",
+     "type": "object"
+    },
     "MessageBusConfig": {
      "additionalProperties": true,
      "description": "Configuration for a single remote message bus connection.\n\nEvery field other than ``name`` is forwarded to the protocol proxy process as a\ncommand line argument (``--field-name value``), so field names must match the\nproxy class's constructor parameters. ``extra='allow'`` lets bus types without a\ndedicated config class pass arbitrary parameters through to their proxy.",
@@ -4943,6 +5279,21 @@
      "title": "Bus Type",
      "type": "string"
     },
+    "definitions": {
+     "additionalProperties": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/LocalCanonical"
+       },
+       {
+        "$ref": "#/$defs/LocalAlias"
+       }
+      ]
+     },
+     "description": "Resources declared here instead of resolved through the presentation service, by remote topic: an alias gives the format, codec and chain a remote topic carries for the canonical device it presents. The presentation service is not consulted for these topics.",
+     "title": "Definitions",
+     "type": "object"
+    },
     "proxy_registration_timeout": {
      "default": 30.0,
      "description": "Seconds to wait for a newly launched proxy to register.",
@@ -4961,6 +5312,10 @@
     "bus_type": {
      "advanced": false,
      "tooltip": "Protocol plugin name, e.g. \"mqtt\" or \"nats\". Resolved to protocol_proxy.protocol.<bus_type>."
+    },
+    "definitions": {
+     "advanced": false,
+     "tooltip": "Resources declared here instead of resolved through the presentation service, by remote topic: an alias gives the format, codec and chain a remote topic carries for the canonical device it presents. The presentation service is not consulted for these topics."
     },
     "proxy_registration_timeout": {
      "advanced": false,
@@ -5711,14 +6066,15 @@
   "driver/device": {
    "$defs": {
     "DataSource": {
-     "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+     "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\nVIRTUAL       A point the framework holds, not the device (like a BACnet value object): its value is set by the\n              platform when the row is writable, or computed from other points by its Transform (``sum_of``,\n              ``value_of``, ``writable_bit`` ...), which may also direct its writes to a real point. Never handed\n              to the interface and never polled.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
      "enum": [
       "short_poll",
       "long_poll",
       "poll_once",
       "static",
       "never_poll",
-      "server"
+      "server",
+      "virtual"
      ],
      "title": "DataSource",
      "type": "string"
@@ -5750,6 +6106,11 @@
        ],
        "default": null,
        "title": "Remote Writable"
+      },
+      "Transform": {
+       "default": "",
+       "title": "Transform",
+       "type": "string"
       },
       "Unit Details": {
        "default": "",
@@ -6157,14 +6518,15 @@
   "driver/point": {
    "$defs": {
     "DataSource": {
-     "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
+     "description": "How a point gets its value, and so how the poll scheduler treats it.\n\n============  =================================================================================================\nSHORT_POLL    Polled at its polling interval in the device's regular cyclic schedule (the default).\nLONG_POLL     Polled at its polling interval, but in a separate schedule so that very long intervals (totals,\n              configuration registers) do not stretch the hyperperiod of the regular schedule.\nPOLL_ONCE     Read once when the device is set up or reconfigured (nameplate data), then never polled.\nSTATIC        Never read from a device: the value is configuration or whatever was last written to it.\nNEVER_POLL    A device point the platform never polls; values arrive by push (change of value, unsolicited\n              responses) or by an explicit get. ``never`` is accepted as an older spelling.\nSERVER        A served point of a device in a server role: written by the platform and by the peer's pushes,\n              never polled, seeded both ways when the device registers with its proxy.\nVIRTUAL       A point the framework holds, not the device (like a BACnet value object): its value is set by the\n              platform when the row is writable, or computed from other points by its Transform (``sum_of``,\n              ``value_of``, ``writable_bit`` ...), which may also direct its writes to a real point. Never handed\n              to the interface and never polled.\n============  =================================================================================================\n\nPoints that are not ``scheduled`` are left out of the cyclic poll sets; points that are not ``polled`` are never\nread by the scheduler at all, so their staleness is judged by any configured ``stale_timeout`` alone.",
      "enum": [
       "short_poll",
       "long_poll",
       "poll_once",
       "static",
       "never_poll",
-      "server"
+      "server",
+      "virtual"
      ],
      "title": "DataSource",
      "type": "string"
@@ -6196,6 +6558,11 @@
      ],
      "default": null,
      "title": "Remote Writable"
+    },
+    "Transform": {
+     "default": "",
+     "title": "Transform",
+     "type": "string"
     },
     "Unit Details": {
      "default": "",
@@ -6377,6 +6744,9 @@
     "Remote Writable": {
      "advanced": true
     },
+    "Transform": {
+     "advanced": true
+    },
     "Unit Details": {
      "advanced": true
     },
@@ -6544,6 +6914,18 @@
      "additionalProperties": false,
      "description": "One direction of mirroring: every message of ``source`` is transformed into the format of ``target`` (the chain\nthe presentation service chooses for the fields the message carries) and written to it, or published on it.",
      "properties": {
+      "delivery": {
+       "anyOf": [
+        {
+         "$ref": "#/$defs/DeliveryPolicy"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "When the source's arrivals become one message for the chain: each (default), complete, merge, interval or trigger, with their options (icm.resources.DeliveryPolicy)."
+      },
       "enabled": {
        "default": true,
        "title": "Enabled",
@@ -6600,6 +6982,113 @@
      "title": "BridgeConfig",
      "type": "object"
     },
+    "CodecSpec": {
+     "additionalProperties": false,
+     "description": "The wire encoding a resource's messages leave in: JSON (the default) or protobuf with the message name the\nformat declares and, when the codec depends on it, the standard's edition (an OpenFMB release).",
+     "properties": {
+      "edition": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Edition"
+      },
+      "encoding": {
+       "default": "json",
+       "enum": [
+        "json",
+        "protobuf"
+       ],
+       "title": "Encoding",
+       "type": "string"
+      },
+      "proto": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Proto"
+      }
+     },
+     "title": "CodecSpec",
+     "type": "object"
+    },
+    "DeliveryPolicy": {
+     "additionalProperties": false,
+     "description": "When a consumer wants a message out of the arrivals on a resource's topics (see ``assembler``):\n\n- ``each``: every arrival as it comes, with the fields it carries (the default).\n- ``complete``: once every required field has arrived since the last emit; after ``max_wait`` seconds from the\n  first arrival, with what is present.\n- ``merge``: every arrival, merged over the last known values of the other required fields; values older than\n  ``stale_after`` seconds are not merged.\n- ``interval``: every ``interval`` seconds from the last known values, whether or not anything arrived.\n- ``trigger``: when one of ``fields`` changes value, merged like ``merge``.",
+     "properties": {
+      "fields": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Fields",
+       "type": "array"
+      },
+      "interval": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Interval"
+      },
+      "kind": {
+       "default": "each",
+       "enum": [
+        "each",
+        "complete",
+        "merge",
+        "interval",
+        "trigger"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "max_wait": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Max Wait"
+      },
+      "stale_after": {
+       "anyOf": [
+        {
+         "exclusiveMinimum": 0,
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Stale After"
+      }
+     },
+     "title": "DeliveryPolicy",
+     "type": "object"
+    },
     "EndConfig": {
      "additionalProperties": false,
      "description": "One end of a bridge: a UAI the presentation service knows. A *device* end (the default) is the canonical device\nthe UAI leads to, read from its publications or written through the driver. A *bus* end is the UAI itself as a\ntopic on the VOLTTRON bus carrying messages in the UAI's (alias) format: an OpenFMB profile topic, read from or\npublished to, so OpenFMB-aware agents and the Message Bus Adapter in relay mode can take part.",
@@ -6609,6 +7098,22 @@
        "description": "Treat the UAI as a topic on the VOLTTRON bus rather than as a device.",
        "title": "Bus",
        "type": "boolean"
+      },
+      "definition": {
+       "anyOf": [
+        {
+         "$ref": "#/$defs/LocalCanonical"
+        },
+        {
+         "$ref": "#/$defs/LocalAlias"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "description": "The resource this end is, declared here instead of resolved through the presentation service: a canonical (data_format, publication_topic, rpc_topic) or an alias (target_format, codec, transform). The UAI then only names the end.",
+       "title": "Definition"
       },
       "topic": {
        "anyOf": [
@@ -6635,6 +7140,178 @@
       "uai"
      ],
      "title": "EndConfig",
+     "type": "object"
+    },
+    "LocalAlias": {
+     "additionalProperties": false,
+     "description": "An alias declared by the agent that uses it: a canonical resource's publications presented in another format\nthrough a stated chain. The chain is the stage list the service's mapping files hold and ``resolve`` returns; it\nis run as given (no path finding, no scoring, no per-field-set selection; agents that need those stay on\n``lookup``). ``write_transform`` is the chain for writing the alias's format back to the device, when the alias is\nwritten through; it is not derived from ``transform``.",
+     "properties": {
+      "canonical_uai": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Canonical Uai",
+       "type": "array"
+      },
+      "codec": {
+       "$ref": "#/$defs/CodecSpec"
+      },
+      "data_format": {
+       "title": "Data Format",
+       "type": "string"
+      },
+      "kind": {
+       "const": "alias",
+       "default": "alias",
+       "title": "Kind",
+       "type": "string"
+      },
+      "parameters": {
+       "additionalProperties": true,
+       "title": "Parameters",
+       "type": "object"
+      },
+      "publication_topic": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publication Topic"
+      },
+      "publication_topics": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Publication Topics",
+       "type": "array"
+      },
+      "rpc_topic": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Rpc Topic"
+      },
+      "target_format": {
+       "title": "Target Format",
+       "type": "string"
+      },
+      "transform": {
+       "items": {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       "title": "Transform",
+       "type": "array"
+      },
+      "uai": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Uai",
+       "type": "array"
+      },
+      "write_transform": {
+       "anyOf": [
+        {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Write Transform"
+      }
+     },
+     "required": [
+      "uai",
+      "data_format",
+      "target_format"
+     ],
+     "title": "LocalAlias",
+     "type": "object"
+    },
+    "LocalCanonical": {
+     "additionalProperties": false,
+     "description": "A canonical resource declared by the agent that uses it: a device's publications in the device's own format.\nThe chain is the identity; only subscription, assembly and the codec are involved.",
+     "properties": {
+      "codec": {
+       "$ref": "#/$defs/CodecSpec"
+      },
+      "data_format": {
+       "title": "Data Format",
+       "type": "string"
+      },
+      "kind": {
+       "const": "canonical",
+       "default": "canonical",
+       "title": "Kind",
+       "type": "string"
+      },
+      "parameters": {
+       "additionalProperties": true,
+       "title": "Parameters",
+       "type": "object"
+      },
+      "publication_topic": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Publication Topic"
+      },
+      "publication_topics": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Publication Topics",
+       "type": "array"
+      },
+      "rpc_topic": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Rpc Topic"
+      },
+      "uai": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Uai",
+       "type": "array"
+      }
+     },
+     "required": [
+      "uai",
+      "data_format"
+     ],
+     "title": "LocalCanonical",
      "type": "object"
     }
    },
