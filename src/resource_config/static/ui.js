@@ -42,6 +42,8 @@ export const btn = (label, onClick, { primary = false, small = true, title } = {
   h('span', { class: `btn${small ? ' sm' : ''}${primary ? ' pri' : ''}`, onClick, title, tabindex: '0', role: 'button',
     onKeydown: (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.currentTarget.classList.contains('dis')) { e.preventDefault(); e.currentTarget.click(); } } }, label);
 export const mb = (label, value) => h('span', { class: 'mb' }, label + ' ', h('b', {}, value));
+// A key to the marks a list uses: a small labelled box, one entry per mark.
+export const key = (...entries) => h('fieldset', { class: 'key' }, h('legend', {}, 'Key'), ...entries.map((e) => h('span', {}, ...(Array.isArray(e) ? e : [e]))));
 // ---- display names. The data keeps its real names (registry columns, package names, model descriptions); only what
 // is drawn changes. Rules, in order: platform-specific phrases first, then the bare product name is dropped.
 const DISPLAY_RULES = [

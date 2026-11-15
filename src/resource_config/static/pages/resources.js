@@ -1,6 +1,6 @@
 // Resources, the home page: the clade tree, the canonical card (R1 stacked / R3 tabs), the alias card (R2), Add alias.
 import { api } from '../api.js';
-import { h, uai, dot, hollow, tag, kind, note, btn, mb, card, section, kv, steps, meter, dialog, toast, input, select, radios, checkbox, info, labelled, segmentsInput } from '../ui.js';
+import { h, uai, dot, hollow, tag, kind, note, btn, mb, card, section, kv, steps, meter, dialog, toast, input, select, radios, checkbox, info, labelled, segmentsInput, key } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, healthCard, checksCard, consumersCard, updateServiceConfig, formatOptions, deleteDialog, dependentsOf, chainReport } from './common.js';
 import { busChoice } from './bridges.js';
@@ -66,7 +66,7 @@ function tree(canonical, aliases, selected) {
       }
     }
   }
-  el.append(t2, h('div', { class: 'legend' }, h('span', {}, dot(), ' canonical'), h('span', {}, hollow(), ' alias')),
+  el.append(t2, key([dot(), ' canonical resource'], [hollow(), ' alias of a resource']),
     h('div', { class: 'bar' }, btn('+ Resource', addResource), btn('+ Alias', () => selected && addAlias(canonical.find((c) => c.topic === selected || c.aliases.includes(selected))))));
   return el;
 }

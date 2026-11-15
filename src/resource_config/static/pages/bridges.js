@@ -1,6 +1,6 @@
 // Bridges: device bridges of the Resource Bridge as a source tree; remote topics of the bus adapter grouped by bus.
 import { api } from '../api.js';
-import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, steps, meter, toast, dialog, select, input, radios, checkbox, labelled } from '../ui.js';
+import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, steps, meter, toast, dialog, select, input, radios, checkbox, labelled, key } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, checksCard, healthCard, chainReport, activityCard, settingsDialog } from './common.js';
 
@@ -33,7 +33,7 @@ function tree(m, bridge, remote) {
   const rtl = h('div', { class: 'rtl' });
   for (const [bus, list] of byBus) { rtl.append(h('div', { class: 'grp' }, bus, ' ', h('span', { class: 'n' }, String(list.length)), ' ', note(list[0].bus_type || '')));
     for (const t of list) rtl.append(h('div', { class: `row${remote === t ? ' on' : ''}`, style: { cursor: 'pointer' }, onClick: () => navigate('bridges', { topic: t.topic }) }, dot(t.alias ? 'ok' : 'warn'), h('span', { class: 'ic', title: t.direction }, t.direction === 'outbound' ? '⇈' : '⇊'), uai(t.topic.split('/')), t.wildcard ? tag('wildcard') : null)); }
-  el.append(rtl, h('div', { class: 'bar', style: { marginTop: '4px' } }, btn('+ Remote topic', addRemote)), h('div', { class: 'legend' }, h('span', {}, 'Legend: ▣ a device as a bridge end'), h('span', {}, '◎ a bus topic as a bridge end'), h('span', {}, '⇈ outbound, local → bus'), h('span', {}, '⇊ inbound, bus → local')));
+  el.append(rtl, h('div', { class: 'bar', style: { marginTop: '4px' } }, btn('+ Remote topic', addRemote)), key('▣ a device as a bridge end', '◎ a bus topic as a bridge end', '⇈ outbound, local → bus', '⇊ inbound, bus → local'));
   return el;
 }
 function renderBridge(main, ctx, b) {

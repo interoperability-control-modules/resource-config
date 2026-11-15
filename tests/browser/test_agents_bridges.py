@@ -75,6 +75,7 @@ def test_remote_topic_dialog_leads_to_the_bus_adapter_settings(ui):
     expect(ui.page.locator('.dialog h4')).to_contain_text('platform.bus_adapter')
     expect(ui.button('+ Bus', ui.page.locator('.dialog'))).to_be_visible()
     ui.cancel()
-    legend = ui.page.locator('#side .legend').last
-    expect(legend).to_contain_text('a device as a bridge end')
-    expect(legend).to_contain_text('inbound, bus → local')
+    key = ui.page.locator('#side fieldset.key')
+    expect(key.locator('legend')).to_have_text('Key')
+    expect(key).to_contain_text('a device as a bridge end')
+    expect(key).to_contain_text('inbound, bus → local')
