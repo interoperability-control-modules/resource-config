@@ -231,7 +231,14 @@ function remoteHealthRows(d) {
   if (r.last_error) rows.push(['last error', `${r.last_error} (${when(r.last_failure)})`, 'err']);
   if (failing) rows.push(['failing points', `${failing}: ${Object.keys(r.point_errors).map((k) => k.split('/').pop()).slice(0, 4).join(', ')}${failing > 4 ? ' …' : ''}`, 'warn']);
   if (r.writes) rows.push(['writes', `${r.writes} · ${r.write_failures ?? 0} failed`, r.write_failures ? 'warn' : '']);
-  if (r.protocol && typeof r.protocol === 'object') rows.push(['protocol', Object.entries(r.protocol).filter(([k]) => k !== 'error').map(([k, v]) => `${k} ${v}`).join(' · ')]);
+  if (r.protocol && typeof r.protocol === 'object') {
+    // what the protocol adds: scalars as they are; a counter block (requests, successes, failures…) as one summary
+    const scalars = Object.entries(r.protocol).filter(([k, v]) => k !== 'error' && (v === null || typeof v !== 'object')).map(([k, v]) => `${k} ${v}`);
+    const counters = Object.entries(r.protocol).filter(([, v]) => v && typeof v === 'object' && 'requests' in v && v.requests)
+      .map(([k, v]) => `${k}: ${v.requests} requests, ${v.failures || 0} failed${v.reconnects ? `, ${v.reconnects} reconnects` : ''}`);
+    if (scalars.length) rows.push(['protocol', scalars.join(' · ')]);
+    for (const c of counters) rows.push(['counters', c]);
+  }
   return rows;
 }
 function remoteIdOf(d) {
