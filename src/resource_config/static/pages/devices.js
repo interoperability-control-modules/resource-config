@@ -228,7 +228,9 @@ function remoteHealthRows(d) {
   const rows = [['remote health', r.status || '—', r.status === 'GOOD' ? 'ok' : r.status === 'BAD' ? 'err' : 'warn'],
     ['polls', `${r.polls ?? 0} · ${r.poll_failures ?? 0} failed${r.consecutive_failures ? ` · ${r.consecutive_failures} in a row` : ''}`, r.consecutive_failures ? 'err' : ''],
     ['last success', when(r.last_success)]];
-  if (r.last_error) rows.push(['last error', `${r.last_error} (${when(r.last_failure)})`, 'err']);
+  // the latest error is shown while the remote is failing; once it answers again only the time of the last failure stays
+  if (r.last_error && (r.status !== 'GOOD' || r.consecutive_failures)) rows.push(['last error', `${r.last_error} (${when(r.last_failure)})`, 'err']);
+  else if (r.last_failure) rows.push(['last failure', `${when(r.last_failure)}, recovered`]);
   if (failing) rows.push(['failing points', `${failing}: ${Object.keys(r.point_errors).map((k) => k.split('/').pop()).slice(0, 4).join(', ')}${failing > 4 ? ' …' : ''}`, 'warn']);
   if (r.writes) rows.push(['writes', `${r.writes} · ${r.write_failures ?? 0} failed`, r.write_failures ? 'warn' : '']);
   if (r.protocol && typeof r.protocol === 'object') {

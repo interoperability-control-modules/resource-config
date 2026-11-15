@@ -227,10 +227,31 @@ def test_device_health_card_shows_the_remotes_report(ui):
     card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='Health'))
     expect(card).to_contain_text('remote health')
     expect(card.locator('.hrow', has_text='remote health').locator('.ok')).to_have_text('GOOD')
-    expect(card).to_contain_text('120 · 2 failed')
+    expect(card).to_contain_text(re.compile(r'\d+ · 2 failed'))
     expect(card).to_contain_text('device_address 127.0.0.1')
+    expect(card).to_contain_text('recovered')             # a past failure on a healthy remote is not shown as an error
+    expect(card).not_to_contain_text('last error')
     ui.go(DNP3)
     card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='Health'))
     expect(card.locator('.hrow', has_text='remote health').locator('.err')).to_have_text('BAD')
     expect(card).to_contain_text('no master connected')
     expect(card).to_contain_text('failing points')
+
+
+def test_live_state_is_re_read_on_a_timer_but_not_under_an_edit(ui):
+    """Health, status and statistics change without store events: the model is re-read every few seconds and the page
+    drawn again, except while a dialog, an edit form or a focused field would be disturbed."""
+    ui.page.evaluate("localStorage.setItem('rc:live', '400')")
+    ui.open(SUNSPEC)
+    card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='Health'))
+    polls = card.locator('.hrow', has_text='polls')
+    first = polls.inner_text()
+    expect(polls).not_to_have_text(first, timeout=5000)
+    expect(ui.page.locator('#statusbar')).to_contain_text('live every 0 s')
+    ui.button('Edit', ui.page.locator('.rc')).click()
+    expect(ui.button('Save')).to_be_visible()
+    interval = ui.page.locator('#main input[placeholder="60"]')
+    interval.fill('7')
+    ui.page.wait_for_timeout(1200)
+    assert interval.input_value() == '7', 'an edit form is left alone by the live refresh'
+    ui.button('Cancel').click()

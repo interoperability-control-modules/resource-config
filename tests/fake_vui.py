@@ -215,7 +215,8 @@ def make_fake_vui() -> FastAPI:
         app.state.rpc_calls.append((identity, method, body))
         if identity == 'platform.presentation' and method in ('driver_health', 'driver_status'):
             method = {'driver_health': 'health', 'driver_status': 'status'}[method]    # the service relays the driver's health() and status()
-            report = {'devices/matrix/SunSpec/client': {'status': 'GOOD', 'polls': 120, 'poll_failures': 2, 'consecutive_failures': 0, 'last_success': '2026-11-14T19:10:00',
+            app.state.health_calls = getattr(app.state, 'health_calls', 0) + 1           # a live device: every reading shows another poll
+            report = {'devices/matrix/SunSpec/client': {'status': 'GOOD', 'polls': 120 + app.state.health_calls, 'poll_failures': 2, 'consecutive_failures': 0, 'last_success': '2026-11-14T19:10:00',
                                                         'last_failure': '2026-11-14T18:50:00', 'last_error': None, 'last_poll_duration': 0.012, 'point_errors': {}, 'writes': 3, 'write_failures': 0,
                                                         'last_write_error': None, 'events': [], 'remote': "('tcp', '127.0.0.1', '15020', '1')", 'devices': ['devices/matrix/SunSpec/client'],
                                                         'protocol': {'protocol': 'modbus', 'transport': 'tcp', 'device_address': '127.0.0.1', 'unit_id': 1}},
