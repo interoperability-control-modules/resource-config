@@ -356,7 +356,8 @@ async function deleteRegistry(name) { try { await api.deleteEntry('platform.driv
 
 // Discover (design DS1/DS2): Source asks for what the generator needs; Review is read-only; the result is one pending set.
 function discoverDialog() {
-  const form = { protocol: 'sunspec', source: 'unit', dnp3_source: 'outstation', host: '', port: '', unit: 1, master_id: '', outstation_id: '', role: 'client', scaling: 'driver', topic: '', publish: 'multi', interval: '', registry_name: '', file: null, device_format: '' };
+  const form = { protocol: 'sunspec', source: 'unit', dnp3_source: 'outstation', host: '', port: '', unit: 1, master_id: '', outstation_id: '', role: 'client', scaling: 'driver', topic: '', publish: 'multi', interval: '', registry_name: '', file: null, device_format: '',
+    cert_path: '', key_path: '', ca_path: '', pin: '' };
   const where = h('div', { class: 'grid kv1' });
   const fileInput = () => h('input', { type: 'file', accept: '.json', onChange: (e) => (form.file = e.target.files[0]) });
   const renderWhere = () => {
@@ -394,6 +395,13 @@ function discoverDialog() {
           ? select('', mirrorable.map((d) => [d.topic, d.topic]), { blank: 'choose…', width: '100%', onChange: (v) => { const d = state.model.devices.find((x) => x.topic === v); const res = d && state.model.resources.canonical.find((c) => c.topic === d.resource); form.device_format = res ? res.format : ''; } })
           : note('No device publishes a resource yet. Discover the device to be represented first (the inverter, for instance); its resource\'s format decides what the 2030.5 client can report and accept.'),
         h('span', { class: 'k' }, 'Server URL'), input(form.host, { mono: true, width: '100%', placeholder: 'https://127.0.0.1:8443', onChange: (v) => (form.host = v) }),
+        // The client's identity towards the server: a certificate the server knows (its LFDI is derived from it), its
+        // key, and the CA that signed the server's certificate. Paths on the platform host. Without them the client
+        // cannot register and every point reads "Server not registered".
+        h('span', { class: 'k' }, 'Client certificate ', info('Path, on the platform host, of the PEM certificate this client presents; the server must know it (its LFDI). In the showroom: icmstack register sep2-server --print names the files.')), input(form.cert_path, { mono: true, width: '100%', placeholder: '/path/to/client.crt', onChange: (v) => (form.cert_path = v) }),
+        h('span', { class: 'k' }, 'Client key'), input(form.key_path, { mono: true, width: '100%', placeholder: '/path/to/client.key', onChange: (v) => (form.key_path = v) }),
+        h('span', { class: 'k' }, 'CA certificate ', info('The CA that signed the server\'s certificate, so the client trusts it.')), input(form.ca_path, { mono: true, width: '100%', placeholder: '/path/to/ca.crt', onChange: (v) => (form.ca_path = v) }),
+        h('span', { class: 'k' }, 'PIN ', info('The registration PIN the server expects for this device, when it uses one.')), input(form.pin, { num: true, width: '120px', placeholder: 'none', onChange: (v) => (form.pin = v) }),
         h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client'], ['server', 'server']], (v) => (form.role = v)));
     }
   };
@@ -422,7 +430,13 @@ function discoverDialog() {
       if (form.master_id !== '') options.master_id = Number(form.master_id);
       if (form.outstation_id !== '') options.outstation_id = Number(form.outstation_id);
     }
-    if (form.protocol === 'ieee2030_5') { if (!form.device_format) return toast('choose the device to mirror', 'err'); options.device_format = form.device_format; if (form.host) options.server_url = form.host; }
+    if (form.protocol === 'ieee2030_5') {
+      if (!form.device_format) return toast('choose the device to mirror', 'err');
+      if (form.role === 'client' && (!form.cert_path || !form.key_path)) return toast('the client certificate and key are required: the server identifies this device by them', 'err');
+      options.device_format = form.device_format; if (form.host) options.server_url = form.host;
+      for (const k of ['cert_path', 'key_path', 'ca_path']) if (form[k]) options[k] = form[k].trim();
+      if (form.pin !== '') options.pin = Number(form.pin);
+    }
     toast('scanning…');
     try { const result = await api.discover(form.protocol, options); close(); reviewDialog(result, form); } catch (e) { toast(`discovery failed: ${e.message}`, 'err'); }
   } }] });

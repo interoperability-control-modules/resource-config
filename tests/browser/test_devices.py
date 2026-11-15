@@ -189,6 +189,14 @@ def test_discover_2030_5_asks_for_the_device_to_mirror_and_explains_when_there_i
     left_column = dialog.locator('.two > div').first
     column_box, select_box = left_column.bounding_box(), mirror.bounding_box()
     assert select_box['x'] + select_box['width'] <= column_box['x'] + column_box['width'] + 1, 'the choice box does not run into the right column'
+    # the client's identity towards the server is asked, and required for the client role
+    for label in ('Client certificate', 'Client key', 'CA certificate', 'PIN'):
+        expect(dialog.locator('.k', has_text=label)).to_be_visible()
+    mirror.select_option('matrix/SunSpec/client')
+    dialog.locator('input[placeholder="site1/feeder1/pv_inverter"]').fill('site9/sep2')
+    ui.page.keyboard.press('Tab')
+    ui.button('Scan and review ▸', dialog).click()
+    expect(ui.toast('the client certificate and key are required')).to_be_visible()
     ui.cancel()
 
 
