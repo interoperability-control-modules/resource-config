@@ -147,6 +147,7 @@ def test_discover_reviews_then_fills_and_applies_the_pending_set(ui):
     # the discovered entry keeps its remote settings under remote_config; the card and its edit form show them
     expect(ui.page.locator('#main')).to_contain_text('10.0.0.21')
     ui.button('Edit', ui.page.locator('.rc')).click()
+    expect(ui.button('Save')).to_be_visible()     # the edit form has rendered (the route change is asynchronous)
     assert '10.0.0.21' in ui.page.locator('#main input').evaluate_all('es => es.map((e) => e.value)'), 'the edit form is filled from remote_config'
     ui.button('Cancel').click()
 
