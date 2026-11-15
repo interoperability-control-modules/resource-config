@@ -247,16 +247,23 @@ def test_device_health_card_shows_the_remotes_report(ui):
     expect(card.locator('.hrow', has_text='remote shared with')).to_contain_text('matrix/DNP3/other')
 
 
-def test_live_state_is_re_read_on_a_timer_but_not_under_an_edit(ui):
-    """Health, status and statistics change without store events: the model is re-read every few seconds and the page
-    drawn again, except while a dialog, an edit form or a focused field would be disturbed."""
+def test_live_tick_updates_only_the_health_card(ui):
+    """Health, status and statistics change without store events: the model is re-read every few seconds and the one
+    live card of the page replaced in place. The rest of the page is untouched: the tree, its filter, the registry
+    table, scroll positions and any edit form stay exactly as they were."""
     ui.page.evaluate("localStorage.setItem('rc:live', '400')")
     ui.open(SUNSPEC)
     card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='Health'))
     polls = card.locator('.hrow', has_text='polls')
     first = polls.inner_text()
+    # mark the main pane and the side filter; both must survive the ticks untouched
+    ui.page.locator('#side input[placeholder="filter"]').fill('inverter')
+    main_marker = ui.page.evaluate("() => { const el = document.querySelector('#main .rc'); el.dataset.marker = 'kept'; return el.dataset.marker; }")
+    assert main_marker == 'kept'
     expect(polls).not_to_have_text(first, timeout=5000)
     expect(ui.page.locator('#statusbar')).to_contain_text('live every 0 s')
+    assert ui.page.evaluate("() => document.querySelector('#main .rc').dataset.marker") == 'kept', 'the main pane was not rebuilt'
+    assert ui.page.locator('#side input[placeholder="filter"]').input_value() == 'inverter', 'the side pane was not rebuilt'
     ui.button('Edit', ui.page.locator('.rc')).click()
     expect(ui.button('Save')).to_be_visible()
     interval = ui.page.locator('#main input[placeholder="60"]')

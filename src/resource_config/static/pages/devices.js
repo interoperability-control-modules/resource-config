@@ -97,13 +97,21 @@ function renderDevice(main, ctx, d, editing) {
     sections: [section('Device', deviceBody, { note: editing ? 'in edit mode' : undefined, actions: d.resource ? [btn('Resource ▸', () => navigate('resources', { uai: d.resource }))] : [note('no canonical resource publishes this device')] }),
       section('Polling and publishing', pollingBody), section(`Remote config`, remoteSection, { note: d.driver_type || '' }), registrySection,
       d.driver_role && d.driver_role !== 'client' ? section('Served state', () => h('div', {}, note('the agent-written state entry; read-only'), h('pre', { class: 'mono' }, JSON.stringify((state.model && stateEntry(d)) || {}, null, 2))), { collapsed: true, note: 'only for server roles · written by the agent' }) : null] }));
-  if (ctx) {
-    const driver = (state.model.agents || []).find((a) => a.identity === 'platform.driver');
-    ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })),
-      healthCard([['driver', driver ? (driver.running ? '● running' : '○ stopped') : '—', driver && driver.running ? 'ok' : 'warn'], ...remoteHealthRows(d),
-        ['points', d.registry_rows ? String(d.registry_rows.length) : '—']]),
-      deviceConsumers(d), checksEl);
-  }
+  if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })), deviceHealthCard(d), deviceConsumers(d), checksEl);
+}
+// The live card of this page: the driver's state and this remote's health, replaced in place on every live tick.
+function deviceHealthCard(d) {
+  const driver = (state.model.agents || []).find((a) => a.identity === 'platform.driver');
+  const card = healthCard([['driver', driver ? (driver.running ? '● running' : '○ stopped') : '—', driver && driver.running ? 'ok' : 'warn'], ...remoteHealthRows(d),
+    ['points', d.registry_rows ? String(d.registry_rows.length) : '—']]);
+  card.classList.add('live');
+  return card;
+}
+export function renderLive({ ctx, params }) {
+  const devices = state.model.devices;
+  const d = devices.find((x) => x.topic === params.topic) || devices[0];
+  const old = ctx && ctx.querySelector('.card.live');
+  if (d && old) old.replaceWith(deviceHealthCard(d));
 }
 function remoteView(schema, remote) {
   const hints = schema['x-hints'] || {}; const props = schema.properties || {};

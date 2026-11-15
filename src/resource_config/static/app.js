@@ -30,18 +30,21 @@ export async function refreshModel(refresh = false) {
   catch (e) { if (e.status !== 401) toast(`Could not load the platform model: ${e.message}`, 'err'); }
 }
 // Live state: the agents' status and health, the driver's remote health and the Resource Bridge's statistics change
-// without any store event, so the model is re-read on a timer. The page is drawn again only when that cannot disturb
-// the user: no dialog open, no edit form, no field focused, the tab visible.
+// without any store event, so the model is re-read on a timer. Only what is live is drawn again: the status bar, the
+// pending count, and the one card a page marks as live (Health on a device, State on an agent, Activity on a bridge),
+// which the page replaces in place through renderLive. Nothing else moves, so reading, scrolling and typing are left alone.
 export const LIVE_MS = Number(localStorage.getItem('rc:live')) || 5000;
 let liveBusy = false;
 async function liveTick() {
   if (liveBusy || document.visibilityState === 'hidden' || !state.session || !state.model) return;
-  if (document.querySelector('.dialog') || state.params.edit) return;
-  const active = document.activeElement;
-  if (active && active.closest('#panes') && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName)) return;
   liveBusy = true;
-  try { state.model = await api.model(false); state.pending = (await api.pending()).entries; render(); }
-  catch (e) { /* a missed tick; the next one tries again */ }
+  try {
+    state.model = await api.model(false); state.pending = (await api.pending()).entries;
+    renderStatus();
+    const pill = document.querySelector('#tabs .pill'); if (pill) pill.textContent = String(state.pending.length);
+    const page = PAGES[state.page];
+    if (page.renderLive && state.ctx) page.renderLive({ ctx: document.getElementById('ctx'), params: state.params, state });
+  } catch (e) { /* a missed tick; the next one tries again */ }
   finally { liveBusy = false; }
 }
 setInterval(liveTick, LIVE_MS);

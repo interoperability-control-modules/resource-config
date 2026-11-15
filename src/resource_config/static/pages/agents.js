@@ -61,11 +61,20 @@ function renderAgent(main, ctx, a, editing) {
   main.append(card({ title: h('span', { style: { fontSize: '18px', fontWeight: 600 } }, a.identity), badge: kind(a.type), boxes: [mb('package', packageLabel(a.name)), a.tag ? mb('tag', a.tag) : null],
     buttons: [...lifecycle, editing || !hasConfig || a.type === 'service' ? null : btn('Edit', () => navigate('agents', { identity: a.identity, edit: 1 })), btn('Raw JSON', () => rawEditor(a.identity, 'config')), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }]))],
     sections: [summary, section('Configuration', configBox, { note: schema ? 'config · generated from the agent\'s model' : a.type === 'service' ? 'config · lists owned by the Resources, Formats and Transforms tabs' : 'config' })] }));
-  if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })),
-    h('div', { class: 'card' }, h('h4', {}, 'State'), ...[['status', a.hidden ? '● platform service' : a.running ? '● running' : '○ stopped', a.running || a.hidden ? 'ok' : 'warn'], ['enabled', a.enabled == null ? '—' : a.enabled ? 'yes' : 'no'], ['priority', a.priority ?? '—'], ['pid', a.pid ?? '—'], ['exit code', a.exit_code ?? '—'], ['uuid', a.uuid || '—'],
-      ...healthRows(a)].map(([k, v, cls]) => h('div', { class: 'hrow' }, h('span', {}, k), h('span', { class: cls || '' }, String(v))))),
+  if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })), stateCard(a),
     h('div', { class: 'card' }, h('h4', {}, 'Owns'), h('div', { class: 'uby' }, ...ownedBy(a))),
     checksCard(a.running === false && !a.hidden ? [['warn', 'not running']] : [['ok', a.hidden ? 'platform service' : 'running']]));
+}
+// The live card of this page: the agent's state and health, replaced in place on every live tick.
+function stateCard(a) {
+  return h('div', { class: 'card live' }, h('h4', {}, 'State'), ...[['status', a.hidden ? '● platform service' : a.running ? '● running' : '○ stopped', a.running || a.hidden ? 'ok' : 'warn'], ['enabled', a.enabled == null ? '—' : a.enabled ? 'yes' : 'no'], ['priority', a.priority ?? '—'], ['pid', a.pid ?? '—'], ['exit code', a.exit_code ?? '—'], ['uuid', a.uuid || '—'],
+    ...healthRows(a)].map(([k, v, cls]) => h('div', { class: 'hrow' }, h('span', {}, k), h('span', { class: cls || '' }, String(v)))));
+}
+export function renderLive({ ctx, params }) {
+  const agents = state.model.agents || [];
+  const a = agents.find((x) => x.identity === params.identity) || agents[0];
+  const old = ctx && ctx.querySelector('.card.live');
+  if (a && old) old.replaceWith(stateCard(a));
 }
 // The platform's health record of an agent is what its heartbeats carry: 'message' is the status it set (GOOD, BAD),
 // 'last_heartbeat' when it was last heard. The driver does not heartbeat; its health is summarised from its remotes.

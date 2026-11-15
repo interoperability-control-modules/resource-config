@@ -67,7 +67,7 @@ function renderBridge(main, ctx, b) {
       ...(tDev && tDev.registry_rows && tDev.driver_role !== 'client' ? [[tDev.registry_rows.some((r) => (r['Data Source'] || '').toLowerCase() === 'server') ? 'ok' : 'warn', 'target rows writable (Data Source = server)']] : []),
       ...(m.bridges.some((o) => o !== b && o.source.uai.join('/') === b.target.uai.join('/') && o.target.uai.join('/') === b.source.uai.join('/')) ? [['warn', 'pairs with a bridge in the other direction: the echo window applies']] : [])]),
     h('div', { class: 'card' }, h('h4', {}, 'Write tracking'), note('Only changes are written. What the target holds is known from its publications, this agent\'s writes and the driver\'s last RPC when older than stale_after.')),
-    activityCard(b.stats));
+    liveActivity(b));
 }
 function renderRemote(main, ctx, t) {
   const alias = state.model.resources.aliases.find((a) => a.topic === t.alias || a.topic === t.topic);
@@ -120,6 +120,14 @@ function remoteDialog(existing = null) {
         const adapter = data.adapters.find((a) => (a.name || a.host) === form.bus); if (!adapter) throw new Error('bus not found');
         const key = form.direction === 'outbound' ? 'local_subscriptions' : 'remote_subscriptions'; adapter[key] = [...new Set([...(adapter[key] || []), form.topic])];
         await api.putEntry('platform.bus_adapter', 'config', { type: 'json', data }); close(); toast('saved', 'ok'); await refreshModel(false); navigate('bridges', { topic: form.topic }); } catch (e) { toast(e.message, 'err'); } } }] });
+}
+// The live card of this page: the bridge's activity statistics, replaced in place on every live tick.
+function liveActivity(b) { const card = activityCard(b.stats); card.classList.add('live'); return card; }
+export function renderLive({ ctx, params }) {
+  const m = state.model;
+  const b = m.bridges.find((x) => x.name === params.bridge) || (!params.topic ? m.bridges[0] : null);
+  const old = ctx && ctx.querySelector('.card.live');
+  if (b && old) old.replaceWith(liveActivity(b));
 }
 // The bus row of a dialog: the buses the adapter has, and the way to the adapter's settings when the one wanted is
 // not there yet (or none is). The settings dialog saves to the adapter; the caller's dialog is closed first.
