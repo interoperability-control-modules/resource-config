@@ -1,6 +1,6 @@
 // Agents: identity, package, lifecycle, the configuration form where a schema exists, State on the right.
 import { api } from '../api.js';
-import { packageLabel, h, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, toast } from '../ui.js';
+import { packageLabel, h, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, toast, ago } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, checksCard, configEditor, serviceSummary, SCHEMA_OF_TYPE } from './common.js';
 
@@ -63,9 +63,29 @@ function renderAgent(main, ctx, a, editing) {
     sections: [summary, section('Configuration', configBox, { note: schema ? 'config · generated from the agent\'s model' : a.type === 'service' ? 'config · lists owned by the Resources, Formats and Transforms tabs' : 'config' })] }));
   if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })),
     h('div', { class: 'card' }, h('h4', {}, 'State'), ...[['status', a.hidden ? '● platform service' : a.running ? '● running' : '○ stopped', a.running || a.hidden ? 'ok' : 'warn'], ['enabled', a.enabled == null ? '—' : a.enabled ? 'yes' : 'no'], ['priority', a.priority ?? '—'], ['pid', a.pid ?? '—'], ['exit code', a.exit_code ?? '—'], ['uuid', a.uuid || '—'],
-      ['health', a.health && a.health.status ? a.health.status : '—', a.health && a.health.status === 'GOOD' ? 'ok' : '']].map(([k, v, cls]) => h('div', { class: 'hrow' }, h('span', {}, k), h('span', { class: cls || '' }, String(v))))),
+      ...healthRows(a)].map(([k, v, cls]) => h('div', { class: 'hrow' }, h('span', {}, k), h('span', { class: cls || '' }, String(v))))),
     h('div', { class: 'card' }, h('h4', {}, 'Owns'), h('div', { class: 'uby' }, ...ownedBy(a))),
     checksCard(a.running === false && !a.hidden ? [['warn', 'not running']] : [['ok', a.hidden ? 'platform service' : 'running']]));
+}
+// The platform's health record of an agent is what its heartbeats carry: 'message' is the status it set (GOOD, BAD),
+// 'last_heartbeat' when it was last heard. The driver does not heartbeat; its health is summarised from its remotes.
+export function healthStatus(health) { return health ? (health.status || health.message || null) : null; }
+function healthRows(a) {
+  const status = healthStatus(a.health);
+  const rows = [];
+  if (status) {
+    rows.push(['health', status, status === 'GOOD' ? 'ok' : status === 'BAD' ? 'err' : 'warn']);
+    if (a.health.last_heartbeat) rows.push(['heartbeat', ago((Date.now() - Date.parse(a.health.last_heartbeat)) / 1000)]);
+    if (a.health.context) rows.push(['context', typeof a.health.context === 'string' ? a.health.context : JSON.stringify(a.health.context).slice(0, 80)]);
+  } else if (a.type === 'driver' && state.model.driver_health_live) {
+    const remotes = Object.values(state.model.driver_health || {});
+    const bad = remotes.filter((r) => r.status && r.status !== 'GOOD');
+    rows.push(['health', remotes.length ? (bad.length ? `${bad.length} of ${remotes.length} remotes failing` : `${remotes.length} remote${remotes.length === 1 ? '' : 's'} answering`) : 'no remotes configured', bad.length ? 'err' : 'ok']);
+    rows.push(['from', 'the driver\'s health RPC (it sends no heartbeat)']);
+  } else {
+    rows.push(['health', a.hidden ? 'platform service' : 'no heartbeat received', a.hidden ? '' : 'warn']);
+  }
+  return rows;
 }
 function ownedBy(a) {
   const m = state.model;

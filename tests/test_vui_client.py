@@ -19,7 +19,7 @@ async def test_wrong_password_is_auth_error(settings, client_factory):
 async def test_agents_with_status_health_and_hidden(vui):
     agents = {a.identity: a for a in await vui.list_agents()}
     assert agents['platform.driver'].running and agents['platform.driver'].name.startswith('volttron-platform-driver')
-    assert agents['platform.driver'].health == {'status': 'GOOD', 'context': 'polling'}
+    assert agents['platform.presentation'].health['message'] == 'GOOD' and agents['platform.presentation'].health['last_heartbeat'] and agents['platform.driver'].health == {}
     assert agents['platform.resource_bridge'].running is False and agents['platform.resource_bridge'].exit_code == 0
     assert agents['platform.web'].hidden and not agents['platform.driver'].hidden
 

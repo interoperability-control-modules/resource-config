@@ -86,7 +86,7 @@ def test_agents_are_visible_with_status(logged_in):
     """The wildcard status/health routes need a selector; without one every agent was reported as hidden."""
     agents = {a['identity']: a for a in logged_in.get('/api/model').json()['agents']}
     assert agents['platform.driver']['hidden'] is False and agents['platform.driver']['running'] is True
-    assert agents['platform.driver']['pid'] == 100 and agents['platform.driver']['health']['status'] == 'GOOD'
+    assert agents['platform.driver']['pid'] == 100 and agents['platform.presentation']['health']['message'] == 'GOOD'
     assert agents['platform.web']['hidden'] is True
 
 
@@ -163,3 +163,10 @@ def test_two_discoveries_pending_at_once_both_reach_the_service_config(logged_in
     model = logged_in.get('/api/model?refresh=true').json()
     resources = {d['topic']: d['resource'] for d in model['devices']}
     assert resources['site9/pv_a'] and resources['site9/pv_b'], 'both devices have their canonical resource'
+
+
+def test_model_carries_the_drivers_health_report(logged_in):
+    """The driver's health() RPC, per remote, rides on the model so the Devices and Agents tabs can show it."""
+    model = logged_in.get('/api/model?refresh=true').json()
+    assert model['driver_health_live'] and model['driver_health']['devices/matrix/SunSpec/client']['status'] == 'GOOD'
+    assert model['driver_health']['devices/matrix/DNP3/served']['last_error'] == 'no master connected'

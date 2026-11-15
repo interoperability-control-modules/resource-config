@@ -128,7 +128,9 @@ def make_fake_vui() -> FastAPI:
     @app.get(f'/vui/platforms/{PLATFORM}/agents/-/health')
     async def health(request: Request, authorization: str | None = Header(default=None)):
         check(authorization)
-        return {i: {'status': 'GOOD', 'context': 'polling'} for i in selection(request) if i == 'platform.driver'}
+        # the real health service: one record per agent that heartbeats, 'message' carrying the status it set
+        return {i: {'connected': '2026-11-14T19:06:14.911180', 'peer': i, 'service_agent': False, 'last_heartbeat': '2026-11-14T19:10:14.909617', 'message': 'GOOD'}
+                for i in selection(request) if i in app.state.agents and app.state.agents[i]['running'] and i not in ('platform.resource_bridge', 'platform.driver')}   # the driver sends no heartbeat
 
     @app.api_route(f'/vui/platforms/{PLATFORM}/agents/{{identity}}/running', methods=['GET', 'PUT', 'DELETE'])
     async def running(identity: str, request: Request, authorization: str | None = Header(default=None)):
@@ -211,6 +213,18 @@ def make_fake_vui() -> FastAPI:
         check(authorization)
         body = await request.json()
         app.state.rpc_calls.append((identity, method, body))
+        if identity == 'platform.driver' and method in ('health', 'status'):
+            report = {'devices/matrix/SunSpec/client': {'status': 'GOOD', 'polls': 120, 'poll_failures': 2, 'consecutive_failures': 0, 'last_success': '2026-11-14T19:10:00',
+                                                        'last_failure': '2026-11-14T18:50:00', 'last_error': None, 'last_poll_duration': 0.012, 'point_errors': {}, 'writes': 3, 'write_failures': 0,
+                                                        'last_write_error': None, 'events': [], 'remote': "('tcp', '127.0.0.1', '15020', '1')", 'devices': ['devices/matrix/SunSpec/client'],
+                                                        'protocol': {'protocol': 'modbus', 'transport': 'tcp', 'device_address': '127.0.0.1', 'unit_id': 1}},
+                      'devices/matrix/DNP3/served': {'status': 'BAD', 'polls': 40, 'poll_failures': 40, 'consecutive_failures': 40, 'last_success': None, 'last_failure': '2026-11-14T19:10:05',
+                                                     'last_error': 'no master connected', 'last_poll_duration': None, 'point_errors': {'devices/matrix/DNP3/served/AI_1': 'offline'}, 'writes': 0, 'write_failures': 0,
+                                                     'last_write_error': None, 'events': [{'time': '2026-11-14T19:10:05', 'event': 'poll failed: no master connected'}], 'remote': "('dnp3', '127.0.0.1', '20001')",
+                                                     'devices': ['devices/matrix/DNP3/served'], 'protocol': None}}
+            if method == 'health':
+                return report
+            return {'devices/matrix/SunSpec/client/701_W': {'active': True, 'last_value': 4000, 'last_updated': '2026-11-14T19:10:00', 'stale': False, 'error': None}}
         if identity in ('config.store', 'platform.driver', 'platform.web', 'platform.auth'):
             raise HTTPException(403, {'error': 'refused by the rpc proxy policy'})
         if method == 'resolve':

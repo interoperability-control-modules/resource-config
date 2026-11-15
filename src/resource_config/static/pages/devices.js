@@ -1,6 +1,6 @@
 // Devices: a tree over the topic segments; one device card with Device, Polling and publishing, Remote config and Registry.
 import { api } from '../api.js';
-import { displayColumn, h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog, segmentsInput } from '../ui.js';
+import { displayColumn, h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog, segmentsInput, ago } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, healthCard, checksCard, consumersCard, deleteDialog, dependentsOf, removeMapping } from './common.js';
 
@@ -99,10 +99,9 @@ function renderDevice(main, ctx, d, editing) {
       d.driver_role && d.driver_role !== 'client' ? section('Served state', () => h('div', {}, note('the agent-written state entry; read-only'), h('pre', { class: 'mono' }, JSON.stringify((state.model && stateEntry(d)) || {}, null, 2))), { collapsed: true, note: 'only for server roles · written by the agent' }) : null] }));
   if (ctx) {
     const driver = (state.model.agents || []).find((a) => a.identity === 'platform.driver');
-    const health = driver && driver.health && driver.health.context;
     ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })),
-      healthCard([['driver', driver ? (driver.running ? '● running' : '○ stopped') : '—', driver && driver.running ? 'ok' : 'warn'], ['driver health', (driver && driver.health && driver.health.status) || '—', driver && driver.health && driver.health.status === 'GOOD' ? 'ok' : ''],
-        ['context', typeof health === 'string' ? health : health ? JSON.stringify(health).slice(0, 60) : '—'], ['points', d.registry_rows ? String(d.registry_rows.length) : '—']]),
+      healthCard([['driver', driver ? (driver.running ? '● running' : '○ stopped') : '—', driver && driver.running ? 'ok' : 'warn'], ...remoteHealthRows(d),
+        ['points', d.registry_rows ? String(d.registry_rows.length) : '—']]),
       deviceConsumers(d), checksEl);
   }
 }
@@ -214,6 +213,26 @@ function deviceChecks(d) {
   if (!d.resource) checks.push(['warn', 'no canonical resource publishes this device']);
   if (d.driver_role && d.driver_role !== 'client' && d.registry_rows && !d.registry_rows.some((r) => (r['Data Source'] || '').toLowerCase() === 'server')) checks.push(['warn', 'a server role without Data Source = server rows']);
   return checks;
+}
+// The driver's health report for this device's remote (platform.driver health()), keyed by device topic.
+function remoteHealthOf(d) {
+  const report = state.model.driver_health || {};
+  return report[`devices/${d.topic}`] || report[d.topic] || Object.values(report).find((r) => (r.devices || []).includes(`devices/${d.topic}`)) || null;
+}
+function remoteHealthRows(d) {
+  if (!state.model.driver_health_live) return [['remote health', 'not available: the driver did not answer its health RPC', 'warn']];
+  const r = remoteHealthOf(d);
+  if (!r) return [['remote health', 'not reported: the driver has not configured this device', 'warn']];
+  const when = (t) => (t ? ago((Date.now() - Date.parse(t)) / 1000) : '—');
+  const failing = Object.keys(r.point_errors || {}).length;
+  const rows = [['remote health', r.status || '—', r.status === 'GOOD' ? 'ok' : r.status === 'BAD' ? 'err' : 'warn'],
+    ['polls', `${r.polls ?? 0} · ${r.poll_failures ?? 0} failed${r.consecutive_failures ? ` · ${r.consecutive_failures} in a row` : ''}`, r.consecutive_failures ? 'err' : ''],
+    ['last success', when(r.last_success)]];
+  if (r.last_error) rows.push(['last error', `${r.last_error} (${when(r.last_failure)})`, 'err']);
+  if (failing) rows.push(['failing points', `${failing}: ${Object.keys(r.point_errors).map((k) => k.split('/').pop()).slice(0, 4).join(', ')}${failing > 4 ? ' …' : ''}`, 'warn']);
+  if (r.writes) rows.push(['writes', `${r.writes} · ${r.write_failures ?? 0} failed`, r.write_failures ? 'warn' : '']);
+  if (r.protocol && typeof r.protocol === 'object') rows.push(['protocol', Object.entries(r.protocol).filter(([k]) => k !== 'error').map(([k, v]) => `${k} ${v}`).join(' · ')]);
+  return rows;
 }
 function remoteIdOf(d) {
   const r = d.remote_config || {};

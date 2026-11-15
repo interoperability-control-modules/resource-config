@@ -93,3 +93,18 @@ def test_bridges_page_shows_the_first_remote_topic_when_there_is_no_bridge(ui):
         expect(ui.page.locator('#main .rc')).to_contain_text('Relay')
     finally:
         ui.page.request.put(f'{ui.url}/api/store/platform.resource_bridge/config', data={'type': 'json', 'data': entry['data']})
+
+
+def test_agent_state_shows_health_and_heartbeat(ui):
+    """An agent's health is what its heartbeats carry: the status it set and when it was last heard. The driver, which
+    sends no heartbeat, is summarised from its remotes."""
+    ui.go('#/agents?identity=platform.presentation')
+    state_card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='State'))
+    expect(state_card.locator('.hrow', has_text='health')).to_contain_text('GOOD')
+    expect(state_card.locator('.hrow', has_text='heartbeat')).to_be_visible()
+    ui.go('#/agents?identity=platform.resource_bridge')
+    state_card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='State'))
+    expect(state_card.locator('.hrow', has_text='health')).to_contain_text('no heartbeat received')
+    ui.go('#/agents?identity=platform.driver')
+    state_card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='State'))
+    expect(state_card.locator('.hrow', has_text='health').first).to_contain_text('1 of 2 remotes failing')

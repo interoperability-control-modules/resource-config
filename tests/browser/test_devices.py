@@ -219,3 +219,18 @@ def test_edit_form_shows_role_gated_fields_when_the_entry_has_no_role(ui):
     labels = [' '.join(k.inner_text().split()) for k in ui.page.locator('#main .k:visible').all()]
     assert any(l.startswith('Outstation ip') for l in labels) and not any(l.startswith('Bind host') for l in labels)
     ui.button('Cancel').click()
+
+
+def test_device_health_card_shows_the_remotes_report(ui):
+    """The Health card on a device is the driver's own report of that remote: status, polls, last success, errors."""
+    ui.go(SUNSPEC)
+    card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='Health'))
+    expect(card).to_contain_text('remote health')
+    expect(card.locator('.hrow', has_text='remote health').locator('.ok')).to_have_text('GOOD')
+    expect(card).to_contain_text('120 · 2 failed')
+    expect(card).to_contain_text('device_address 127.0.0.1')
+    ui.go(DNP3)
+    card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='Health'))
+    expect(card.locator('.hrow', has_text='remote health').locator('.err')).to_have_text('BAD')
+    expect(card).to_contain_text('no master connected')
+    expect(card).to_contain_text('failing points')
