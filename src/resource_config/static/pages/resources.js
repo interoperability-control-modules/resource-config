@@ -155,7 +155,10 @@ function deliveryText(d) {
 function renderAlias(main, ctx, a, c) {
   const resolveBox = h('div', {}, note('resolving…'));
   api.resolve(a.uai, a.format, a.deliveries.some((d) => d.kind === 'device') ? 'write' : 'read').then((r) => {
-    resolveBox.replaceChildren(steps(r.path || [], Object.fromEntries((r.path || []).map((f) => [f, HUBS.includes(f) ? 'hub' : f === (r.path || [])[0] ? 'source format' : f === a.format ? 'this alias' : 'bundled']))),
+    const path = r.path || [];
+    const hops = path.slice(1).map((out, i) => h('a', { class: 'mono', onClick: () => navigate('transforms', { input: path[i], output: out }) }, `${path[i]} → ${out}`));
+    resolveBox.replaceChildren(steps(path, Object.fromEntries(path.map((f) => [f, HUBS.includes(f) ? 'hub' : f === path[0] ? 'source format' : f === a.format ? 'this alias' : 'bundled']))),
+      hops.length ? h('div', { class: 'row', style: { margin: '6px 0 2px', gap: '6px 14px' } }, note('transforms on the way:'), ...hops) : null,
       h('div', { class: 'tiles' },
         h('div', { class: 'tile' }, h('h6', {}, 'Retention'), h('div', { class: 'big' }, r.retention != null ? `${Math.round(r.retention * 100)} %` : '—'), meter(r.retention), note(`${(r.path || []).length ? (r.path || []).length - 1 : 0} hops`), h('a', { class: 'rep', onClick: () => chainReport((r.path || [])[0] || a.format, (r.path || []).slice(-1)[0] || a.format) }, 'per hop and per field ▸')),
         h('div', { class: 'tile' }, h('h6', {}, 'Formats'), h('div', {}, `${r.data_format || '?'} → ${r.target_format || a.format}`), note('as the service resolves this alias')),
@@ -172,7 +175,7 @@ function renderAlias(main, ctx, a, c) {
     section('Canonical resource', c ? h('div', { class: 'subcard' }, dot(), uai(c.uai, { box: false, onClick: () => navigate('resources', { uai: c.topic }) }), kind('canonical'), note(`${c.format} · ${c.source && c.source.kind === 'device' ? 'device ' + c.source.device : c.owner}`), h('span', { class: 'sp' }), btn('Open ▸', () => navigate('resources', { uai: c.topic })))
       : h('div', { class: 'warn' }, `dangling: references ${a.references.join('/')}, which is not a canonical resource`), { note: 'what this is a form of' }),
     section('Delivered to', deliveries, { note: `${a.deliveries.length} · what carries this form; several may share one alias`, actions: [btn('+ Delivery', () => addDelivery(a, c))] }),
-    section('How this resolves', resolveBox, { note: a.deliveries.some((d) => d.kind === 'device') ? 'write' : 'read', actions: [btn('Chain report ▸', () => chainReport(a.deliveries.some((d) => d.kind === 'device') ? a.format : (c ? c.format : a.format), a.deliveries.some((d) => d.kind === 'device') ? (c ? c.format : a.format) : a.format)), btn('Open transform ▸', () => navigate('transforms', { input: c ? c.format : a.format, output: a.format }))] }),
+    section('How this resolves', resolveBox, { note: a.deliveries.some((d) => d.kind === 'device') ? 'write' : 'read', actions: [btn('Chain report ▸', () => chainReport(a.deliveries.some((d) => d.kind === 'device') ? a.format : (c ? c.format : a.format), a.deliveries.some((d) => d.kind === 'device') ? (c ? c.format : a.format) : a.format))] }),
     section('Static parameters', params.length ? paramTable : note('the chain references none'), { note: 'alias values override the canonical\'s' }),
   ];
   main.append(card({ title: uai(a.uai, { box: false }), badge: kind('alias', true), boxes: [c ? h('span', { class: 'mb' }, 'of ', h('a', { onClick: () => navigate('resources', { uai: c.topic }) }, c.uai.join(' / '))) : null, mb('format', a.format)],
@@ -320,7 +323,7 @@ function aliasDialog(c, existing = null) {
       }
       const entries = await aliasEntries(c, form);
       if (entries.length === 1) { await api.putEntry('platform.presentation', 'config', { type: 'json', data: entries[0].data }); close(); toast('saved', 'ok'); await refreshModel(false); navigate('resources', { alias: topic }); }
-      else { await api.addPending(entries); close(); toast(`${entries.length} entries added to Pending changes · apply them there`, 'ok'); await refreshModel(false); }
+      else { await api.addPending(entries); close(); toast(`${entries.length} entries staged in Pending changes: apply them there to write the alias and its delivery`, 'ok'); await refreshModel(false); navigate('pending'); }
     } catch (e) { toast(e.message, 'err'); } } }] });
 }
 const addAlias = (c) => aliasDialog(c);

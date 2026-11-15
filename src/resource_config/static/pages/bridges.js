@@ -9,11 +9,14 @@ export const railBadges = (s) => [h('span', { class: 'pill n' }, String(s.model.
 
 export function render({ side, main, ctx, params }) {
   const m = state.model;
-  const bridge = m.bridges.find((b) => b.name === params.bridge) || (!params.topic ? m.bridges[0] : null);
-  const remote = params.topic ? m.remote_topics.find((t) => t.topic === params.topic) : null;
+  // Selection: what the route names; else the first bridge, else the first remote topic.
+  const nothingNamed = !params.bridge && !params.topic;
+  const bridge = m.bridges.find((b) => b.name === params.bridge) || (nothingNamed ? m.bridges[0] : null);
+  const remote = m.remote_topics.find((t) => t.topic === params.topic) || (nothingNamed && !bridge ? m.remote_topics[0] : null);
   if (side) side.append(tree(m, bridge, remote));
   if (remote) renderRemote(main, ctx, remote);
   else if (bridge) renderBridge(main, ctx, bridge);
+  else if (m.bridges.length || m.remote_topics.length) main.append(h('div', { class: 'empty' }, 'Select a bridge or a remote topic in the list on the left.'));
   else main.append(h('div', { class: 'empty' }, 'No bridges or remote topics. ', btn('+ Device bridge', addBridge), ' ', btn('+ Remote topic', addRemote)));
 }
 function tree(m, bridge, remote) {

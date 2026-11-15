@@ -145,3 +145,33 @@ def test_openfmb_alias_fills_the_uai_from_the_format_and_the_mrid_once(ui):
     assert chips(dialog)[3] == '7d1a2b3c-0000-4000-8000-000000000011'
     assert '0000000011' in dialog.locator('input[placeholder^=\'{"mrid"\']').input_value()
     ui.cancel()
+
+
+def test_alias_card_links_each_transform_on_its_path(ui):
+    """"How this resolves" names every hop of the chain as a link to that transform, instead of one button that
+    opened the Transforms tab on whatever came first."""
+    ui.go(ALIAS)
+    section = ui.page.locator('.rc .rsec', has_text='How this resolves')
+    expect(ui.button('Open transform ▸')).to_have_count(0)
+    hops = section.locator('a.mono')
+    expect(hops.first).to_be_visible()
+    first = hops.first.inner_text()
+    hops.first.click()
+    assert ui.page.evaluate('location.hash').startswith('#/transforms?input=')
+    expect(ui.page.locator('#side .tree .sel')).to_have_text(first)
+
+
+def test_saving_an_alias_with_a_delivery_goes_to_pending_changes(ui):
+    """An alias with a delivery is several agents' entries, so it is staged; the dialog says so and shows the cart."""
+    ui.go(CANONICAL)
+    ui.button('+ Alias', ui.page.locator('#side')).click()
+    dialog = ui.dialog
+    dialog.locator('input.seg').first.click()
+    ui.page.keyboard.type('site9/staged_alias')
+    dialog.locator('select').first.select_option('openfmb.solar.reading')
+    dialog.locator('label.chk', has_text='a remote topic on a bus').locator('input.rad').check()
+    ui.button('Save', dialog).click()
+    expect(ui.toast('staged in Pending changes')).to_be_visible()
+    assert ui.page.evaluate('location.hash') == '#/pending'
+    expect(ui.page.locator('#main table')).to_contain_text('platform.bus_adapter')
+    ui.button('Discard all').click()

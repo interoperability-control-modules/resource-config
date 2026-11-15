@@ -79,3 +79,17 @@ def test_remote_topic_dialog_leads_to_the_bus_adapter_settings(ui):
     expect(key.locator('legend')).to_have_text('Key')
     expect(key).to_contain_text('a device as a bridge end')
     expect(key).to_contain_text('inbound, bus → local')
+
+
+def test_bridges_page_shows_the_first_remote_topic_when_there_is_no_bridge(ui):
+    """With no device bridge but a remote topic configured, the Bridges tab must not claim there is nothing."""
+    entry = ui.page.request.get(f'{ui.url}/api/store/platform.resource_bridge/config').json()
+    cleared = {**entry['data'], 'bridges': []}
+    assert ui.page.request.put(f'{ui.url}/api/store/platform.resource_bridge/config', data={'type': 'json', 'data': cleared}).ok
+    try:
+        ui.page.locator('#statusbar').get_by_text('refresh now').click()
+        ui.go('#/bridges')
+        expect(ui.page.locator('#main .empty')).to_have_count(0)
+        expect(ui.page.locator('#main .rc')).to_contain_text('Relay')
+    finally:
+        ui.page.request.put(f'{ui.url}/api/store/platform.resource_bridge/config', data={'type': 'json', 'data': entry['data']})
