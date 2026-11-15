@@ -258,16 +258,50 @@ function aliasDialog(c, existing = null) {
     if (form.delivery === 'device') deliveryFields.append(labelled('Device', 'The device the Resource Bridge writes the alias to.'), select(form.device, state.model.devices.map((d) => [d.topic, d.topic]), { blank: 'choose…', onChange: (v) => (form.device = v), width: '320px' }));
     if (form.delivery === 'local_topic') deliveryFields.append(h('span', { class: 'k' }, 'Local topic'), note('a Resource Bridge bus end publishes the alias on its UAI; any agent may subscribe'));
     checkChain(); };
-  const formatSelect = select(form.format, formatOptions().filter((f) => !c || f !== c.format).map((f) => [f, f]), { blank: 'choose…', onChange: (v) => { form.format = v; checkChain(); } });
+  // An OpenFMB alias is published on openfmb/<module>/<Profile>/<mRID>, and its message header carries the same mRID as
+  // parameters.mrid. The format knows its module and profile (proto), so the UAI prefix is filled in from the format
+  // and the mRID is typed (or generated) once and goes to both places.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const protoOf = (name) => { const f = (state.model.formats || []).find((x) => x.name === name); const p = f && f.proto; return p && p.includes('.') ? ['openfmb', ...p.split('.', 2)] : null; };
+  const parametersInput = input(existing && existing.parameters && Object.keys(existing.parameters).length ? JSON.stringify(existing.parameters) : '', { placeholder: '{"mrid": "7d1a2b3c-0000-4000-8000-000000000011"}', width: '100%', mono: true, onChange: (v) => (form.parameters_text = v) });
+  form.parameters_text = parametersInput.value;
+  const uaiBox = h('span', {});
+  const renderUai = () => uaiBox.replaceChildren(segmentsInput(form.uai, { onChange: (v) => { form.uai = v; const last = v[v.length - 1]; if (protoOf(form.format) && last && UUID.test(last) && mridInput.value !== last) { mridInput.value = last; applyMrid(last, false); } } }));
+  const applyMrid = (value, toUai = true) => {
+    value = (value || '').trim();
+    if (toUai) {
+      const prefix = protoOf(form.format);
+      const segments = form.uai.length ? [...form.uai] : (prefix ? [...prefix] : []);
+      if (segments.length && UUID.test(segments[segments.length - 1])) segments.pop();
+      if (value) segments.push(value);
+      form.uai = segments; renderUai();
+    }
+    let params = {};
+    try { params = parametersOf() || {}; } catch { params = {}; }
+    if (value) params.mrid = value; else delete params.mrid;
+    form.parameters_text = Object.keys(params).length ? JSON.stringify(params) : '';
+    parametersInput.value = form.parameters_text;
+  };
+  const existingMrid = (existing && existing.parameters && existing.parameters.mrid) || (form.uai.length && UUID.test(form.uai[form.uai.length - 1]) ? form.uai[form.uai.length - 1] : '');
+  const mridInput = input(existingMrid, { mono: true, width: '340px', placeholder: 'device mRID, a UUID', onChange: (v) => applyMrid(v) });
+  const mridRow = h('span', { class: 'row' }, mridInput, btn('new mRID', () => { mridInput.value = crypto.randomUUID(); applyMrid(mridInput.value); }));
+  const mridLabel = labelled('mRID', 'The device\'s identity in OpenFMB: a UUID assigned once to this device (new mRID), or one it already has. It is the last segment of the topic and the identifiedObject.mRID of every message header; both are set from here.');
+  const showMrid = () => { const on = !!protoOf(form.format); mridLabel.classList.toggle('hidden', !on); mridRow.classList.toggle('hidden', !on); };
+  const formatSelect = select(form.format, formatOptions().filter((f) => !c || f !== c.format).map((f) => [f, f]), { blank: 'choose…', onChange: (v) => {
+    form.format = v; const prefix = protoOf(v);
+    if (prefix && (!form.uai.length || form.uai[0] === 'openfmb')) { form.uai = [...prefix, ...(mridInput.value.trim() ? [mridInput.value.trim()] : [])]; renderUai(); }
+    showMrid(); checkChain(); } });
+  renderUai(); showMrid();
   const body = h('div', {},
     h('div', { class: 'grid kv1' },
       h('span', { class: 'k' }, 'Of'), c ? uai(c.uai) : h('span', { class: 'warn' }, `${existing.references.join(' / ')} (not a canonical resource)`),
-      labelled('UAI', 'The segments the alias is published and resolved under. Type / or press Tab to start the next segment.'), segmentsInput(form.uai, { onChange: (v) => (form.uai = v) }),
-      labelled('Format', 'The format this form of the resource is in; the service converts from the canonical\'s format.'), formatSelect,
+      labelled('Format', 'The format this form of the resource is in; the service converts from the canonical\'s format. An OpenFMB profile fills the UAI in.'), formatSelect,
+      mridLabel, mridRow,
+      labelled('UAI', 'The segments the alias is published and resolved under. Type / or press Tab to start the next segment.'), uaiBox,
       labelled('Encoding · edition', 'The wire encoding its topic carries and, for protobuf, the edition of the standard.'), h('div', { class: 'row' }, select(form.encoding, [['json', 'json'], ['protobuf', 'protobuf']], { onChange: (v) => (form.encoding = v), width: '140px' }), input(form.edition, { placeholder: defaultEdition() ? `edition, default ${defaultEdition()}` : 'edition, e.g. 2.2', width: '140px', onChange: (v) => (form.edition = v) })),
       h('span', { class: 'k' }, 'Static parameters'), note(`${Object.keys((c && c.parameters) || {}).join(', ') || 'none'} inherited from the canonical`),
-      labelled('Parameters of this alias', 'JSON object of values transform expressions reach with param(\'name\'), merged over the canonical\'s; an OpenFMB alias needs {"mrid": "<device mRID>"} for its message header.'),
-      input(existing && existing.parameters && Object.keys(existing.parameters).length ? JSON.stringify(existing.parameters) : '', { placeholder: '{"mrid": "7d1a2b3c-0000-4000-8000-000000000011"}', width: '100%', mono: true, onChange: (v) => (form.parameters_text = v) })),
+      labelled('Parameters of this alias', 'JSON object of values transform expressions reach with param(\'name\'), merged over the canonical\'s. An OpenFMB alias carries {"mrid": ...} for its message header, filled in from the mRID above.'),
+      parametersInput),
     existing ? note('Deliveries of this alias are listed on its card and edited on the Bridges tab.') : [h('h3', { style: { marginTop: '14px' } }, 'Delivery'),
       radios('delivery', 'none', [['none', 'none', 'the alias only; library clients resolve it themselves'], ['remote_topic', 'a remote topic on a bus'], ['local_topic', 'a local bus topic'], ['device', 'a device, whatever its role']], (v) => { form.delivery = v; renderDelivery(); }),
       deliveryFields],

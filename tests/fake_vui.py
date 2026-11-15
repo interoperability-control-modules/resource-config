@@ -226,7 +226,9 @@ def make_fake_vui() -> FastAPI:
                     'unmapped_targets': [{'target': 'readingMMXU.Hz.mag', 'lost_at': '61850 → openfmb.solar'}]}
         if method == 'list_formats':
             return {'61850': {'hub': True, 'declared': False, 'proto': None, 'scaling': None, 'universe': 400, 'edges_out': ['sunspec'], 'edges_in': ['sunspec']},
-                    'sunspec_client': {'hub': False, 'declared': True, 'proto': None, 'scaling': 'service', 'universe': 2, 'edges_out': ['sunspec'], 'edges_in': []}}
+                    'sunspec_client': {'hub': False, 'declared': True, 'proto': None, 'scaling': 'service', 'universe': 2, 'edges_out': ['sunspec'], 'edges_in': []},
+                    'openfmb.solar.reading': {'hub': False, 'declared': False, 'proto': 'solarmodule.SolarReadingProfile', 'scaling': None, 'universe': 40, 'edges_out': [], 'edges_in': ['openfmb.solar']},
+                    'openfmb.solar.control': {'hub': False, 'declared': False, 'proto': 'solarmodule.SolarControlProfile', 'scaling': None, 'universe': 30, 'edges_out': ['openfmb.solar'], 'edges_in': []}}
         if method == 'list_transforms':
             return [{'input': 'sunspec', 'output': '61850', 'origin': 'bundled', 'retention': 0.7, 'lossiness_override': None, 'fields': 87, 'unmapped_targets': 3},
                     {'input': 'sunspec_client', 'output': 'sunspec', 'origin': 'local', 'retention': 0.93, 'lossiness_override': None, 'fields': 2, 'unmapped_targets': 0}]

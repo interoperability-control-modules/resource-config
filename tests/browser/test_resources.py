@@ -123,3 +123,25 @@ def test_chain_report_dialog_opens_from_an_alias(ui):
     expect(dialog.locator('fieldset legend').first).to_have_text('Per hop')
     ui.button('Close', dialog).click()
     expect(dialog).to_have_count(0)
+
+
+def test_openfmb_alias_fills_the_uai_from_the_format_and_the_mrid_once(ui):
+    """Choosing an OpenFMB profile format fills the UAI prefix from the format's module and profile; the mRID is typed
+    or generated once and lands both as the UAI's last segment and as parameters.mrid."""
+    ui.go(CANONICAL)
+    ui.button('+ Alias', ui.page.locator('#side')).click()
+    dialog = ui.dialog
+    expect(dialog.locator('.k', has_text='mRID')).to_be_hidden()
+    dialog.locator('select').first.select_option('openfmb.solar.reading')
+    expect(dialog.locator('.k', has_text='mRID')).to_be_visible()
+    assert chips(dialog) == ['openfmb', 'solarmodule', 'SolarReadingProfile']
+    ui.button('new mRID', dialog).click()
+    segments = chips(dialog)
+    assert len(segments) == 4 and len(segments[3]) == 36, segments
+    import json
+    assert json.loads(dialog.locator('input[placeholder^=\'{"mrid"\']').input_value()) == {'mrid': segments[3]}
+    dialog.locator('input[placeholder="device mRID, a UUID"]').fill('7d1a2b3c-0000-4000-8000-000000000011')
+    ui.page.keyboard.press('Tab')
+    assert chips(dialog)[3] == '7d1a2b3c-0000-4000-8000-000000000011'
+    assert '0000000011' in dialog.locator('input[placeholder^=\'{"mrid"\']').input_value()
+    ui.cancel()
