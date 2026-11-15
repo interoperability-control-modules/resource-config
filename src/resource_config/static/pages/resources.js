@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { h, uai, dot, hollow, tag, kind, note, btn, mb, card, section, kv, steps, meter, dialog, toast, input, select, radios, checkbox, info, labelled, segmentsInput } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, healthCard, checksCard, consumersCard, updateServiceConfig, formatOptions, deleteDialog, dependentsOf, chainReport } from './common.js';
+import { busChoice } from './bridges.js';
 
 export const title = 'Resources';
 export const railBadges = (s) => [h('span', { class: 'pill n' }, String(s.model.resources.canonical.length))];
@@ -243,6 +244,7 @@ const addResource = () => resourceDialog();
 // Add or edit an alias: format, encoding, edition and, when adding, zero or more deliveries. An alias alone is saved
 // at once; with a delivery the entries of several agents form one pending set.
 function aliasDialog(c, existing = null) {
+  let closeAlias = () => {};
   if (!c && !existing) return toast('select a canonical resource first', 'err');
   const form = { uai: existing ? [...existing.uai] : [], format: existing ? existing.format || '' : '', encoding: existing ? existing.encoding || 'json' : 'json', edition: existing ? existing.edition || '' : '',
     parameters_text: '', delivery: 'none', bus: (state.model.buses[0] || {}).name || '', direction: 'outbound', device: '' };
@@ -251,7 +253,7 @@ function aliasDialog(c, existing = null) {
   const checkChain = async () => { if (!form.format || !c) return; chain.textContent = 'checking…'; try { const r = await api.resolve(c.uai, form.format, form.delivery === 'device' ? 'write' : 'read'); chain.replaceChildren(steps(r.path || []), note(`retention ${r.retention != null ? Math.round(r.retention * 100) + ' %' : '—'}`)); } catch (e) { chain.replaceChildren(h('span', { class: 'warn' }, `no chain: ${e.message} `), btn('Create transform ▸', () => navigate('transforms', { input: c.format, output: form.format }))); } };
   const deliveryFields = h('div', { class: 'grid kv1', style: { marginTop: '8px' } });
   const renderDelivery = () => { deliveryFields.replaceChildren();
-    if (form.delivery === 'remote_topic') deliveryFields.append(labelled('Bus', 'The bus adapter connection that carries the topic.'), select(form.bus, state.model.buses.map((b) => [b.name, `${b.name} · ${b.bus_type || ''}`]), { onChange: (v) => (form.bus = v), width: '260px' }),
+    if (form.delivery === 'remote_topic') deliveryFields.append(labelled('Bus', 'The bus adapter connection that carries the topic.'), busChoice(form, () => closeAlias()),
       labelled('Direction', 'Outbound publishes the alias to the remote bus; inbound relays what the remote publishes.'), radios('dir', form.direction, [['outbound', 'outbound', 'local → remote'], ['inbound', 'inbound', 'remote → local']], (v) => (form.direction = v)));
     if (form.delivery === 'device') deliveryFields.append(labelled('Device', 'The device the Resource Bridge writes the alias to.'), select(form.device, state.model.devices.map((d) => [d.topic, d.topic]), { blank: 'choose…', onChange: (v) => (form.device = v), width: '320px' }));
     if (form.delivery === 'local_topic') deliveryFields.append(h('span', { class: 'k' }, 'Local topic'), note('a Resource Bridge bus end publishes the alias on its UAI; any agent may subscribe'));
@@ -271,7 +273,7 @@ function aliasDialog(c, existing = null) {
       deliveryFields],
     c ? h('fieldset', {}, h('legend', {}, 'Chain check'), chain) : null);
   if (existing) checkChain();
-  dialog({ title: existing ? `Edit alias ${existing.uai.join(' / ')}` : `Add an alias of ${c.uai.join(' / ')}`, width: 820, body, actions: [{ label: 'Cancel', onClick: (close) => close() }, { label: 'Save', primary: true, onClick: async (close) => {
+  closeAlias = dialog({ title: existing ? `Edit alias ${existing.uai.join(' / ')}` : `Add an alias of ${c.uai.join(' / ')}`, width: 820, body, actions: [{ label: 'Cancel', onClick: (close) => close() }, { label: 'Save', primary: true, onClick: async (close) => {
     if (!form.uai.length || !form.format) return toast('UAI and format are required', 'err');
     const topic = form.uai.join('/');
     try {

@@ -61,3 +61,20 @@ def test_agent_edit_and_cancel_round_trip(ui):
     expect(ui.page.locator('#main .grid.kv1 input, #main .grid.kv1 select, #main textarea').first).to_be_visible()
     ui.button('Cancel').click()
     expect(ui.button('Save')).to_have_count(0)
+
+
+def test_remote_topic_dialog_leads_to_the_bus_adapter_settings(ui):
+    """The bus row of the remote-topic dialog offers the adapter's buses and a way to add one: the gear closes the
+    dialog and opens the bus adapter's settings, where buses are managed."""
+    ui.go('#/bridges')
+    ui.button('+ Remote topic').click()
+    dialog = ui.dialog
+    expect(dialog.locator('h4')).to_have_text('Add a remote topic')
+    assert 'site_broker' in ' '.join(dialog.locator('select').first.locator('option').all_inner_texts())
+    ui.button('⚙ buses', dialog).click()
+    expect(ui.page.locator('.dialog h4')).to_contain_text('platform.bus_adapter')
+    expect(ui.button('+ Bus', ui.page.locator('.dialog'))).to_be_visible()
+    ui.cancel()
+    legend = ui.page.locator('#side .legend').last
+    expect(legend).to_contain_text('a device as a bridge end')
+    expect(legend).to_contain_text('inbound, bus → local')

@@ -5329,16 +5329,23 @@
    "description": "Parameters of protocol_proxy.protocol.mqtt.MQTTProxy. Unset optional values are not sent.",
    "properties": {
     "bind_address": {
+     "advanced": true,
      "default": "",
+     "description": "Local interface to connect from.",
+     "group": "Session",
      "title": "Bind Address",
      "type": "string"
     },
     "bind_port": {
+     "advanced": true,
      "default": 0,
+     "description": "Local port to connect from; 0 lets the system choose.",
+     "group": "Session",
      "title": "Bind Port",
      "type": "integer"
     },
     "client_id": {
+     "advanced": true,
      "anyOf": [
       {
        "type": "string"
@@ -5348,16 +5355,25 @@
       }
      ],
      "default": null,
+     "description": "MQTT client id; the broker assigns one when empty.",
+     "group": "Session",
      "title": "Client Id"
     },
     "host": {
+     "description": "The broker's host name or address.",
+     "group": "Broker",
+     "order": 10,
      "title": "Host",
      "type": "string"
     },
     "keepalive": {
+     "advanced": true,
      "default": 60,
+     "description": "Seconds between keep-alive pings.",
+     "group": "Session",
      "title": "Keepalive",
-     "type": "integer"
+     "type": "integer",
+     "unit": "s"
     },
     "local_subscriptions": {
      "description": "Remote topics to serve from local data as soon as the proxy is up: each is resolved through platform.presentation to a canonical resource whose publications are transformed and published to that remote topic continuously (the same as a SUBSCRIBE_LOCAL request).",
@@ -5390,14 +5406,21 @@
       }
      ],
      "default": null,
+     "description": "Broker password.",
+     "group": "Broker",
+     "order": 40,
      "title": "Password"
     },
     "port": {
      "default": 1883,
+     "description": "The broker's TCP port (1883; 8883 with TLS).",
+     "group": "Broker",
+     "order": 20,
      "title": "Port",
      "type": "integer"
     },
     "protocol": {
+     "advanced": true,
      "anyOf": [
       {
        "enum": [
@@ -5412,9 +5435,12 @@
       }
      ],
      "default": null,
+     "description": "MQTT protocol version.",
+     "group": "Session",
      "title": "Protocol"
     },
     "qos": {
+     "advanced": true,
      "anyOf": [
       {
        "enum": [
@@ -5429,9 +5455,12 @@
       }
      ],
      "default": null,
+     "description": "Quality of service for publishes and subscriptions.",
+     "group": "Session",
      "title": "Qos"
     },
     "reconnect_max_delay": {
+     "advanced": true,
      "anyOf": [
       {
        "exclusiveMinimum": 0,
@@ -5442,9 +5471,13 @@
       }
      ],
      "default": null,
-     "title": "Reconnect Max Delay"
+     "description": "Longest wait before reconnecting.",
+     "group": "Session",
+     "title": "Reconnect Max Delay",
+     "unit": "s"
     },
     "reconnect_min_delay": {
+     "advanced": true,
      "anyOf": [
       {
        "exclusiveMinimum": 0,
@@ -5455,7 +5488,10 @@
       }
      ],
      "default": null,
-     "title": "Reconnect Min Delay"
+     "description": "Shortest wait before reconnecting.",
+     "group": "Session",
+     "title": "Reconnect Min Delay",
+     "unit": "s"
     },
     "remote_subscriptions": {
      "description": "Remote topics the proxy subscribes to on the foreign bus as soon as it is up; messages arriving on them are relayed into VOLTTRON (the same as the subscribe RPC).",
@@ -5475,6 +5511,9 @@
       }
      ],
      "default": null,
+     "description": "Connect with TLS.",
+     "group": "Broker",
+     "order": 50,
      "title": "Tls"
     },
     "username": {
@@ -5487,6 +5526,9 @@
       }
      ],
      "default": null,
+     "description": "Broker user, when the broker requires one.",
+     "group": "Broker",
+     "order": 30,
      "title": "Username"
     }
    },
@@ -5497,19 +5539,30 @@
    "type": "object",
    "x-hints": {
     "bind_address": {
-     "advanced": true
+     "advanced": true,
+     "group": "Session",
+     "tooltip": "Local interface to connect from."
     },
     "bind_port": {
-     "advanced": true
+     "advanced": true,
+     "group": "Session",
+     "tooltip": "Local port to connect from; 0 lets the system choose."
     },
     "client_id": {
-     "advanced": true
+     "advanced": true,
+     "group": "Session",
+     "tooltip": "MQTT client id; the broker assigns one when empty."
     },
     "host": {
-     "advanced": false
+     "advanced": false,
+     "group": "Broker",
+     "order": 10,
+     "tooltip": "The broker's host name or address."
     },
     "keepalive": {
      "advanced": true,
+     "group": "Session",
+     "tooltip": "Seconds between keep-alive pings.",
      "unit": "s"
     },
     "local_subscriptions": {
@@ -5521,32 +5574,54 @@
      "tooltip": "Optional stable handle for this remote. When set, the unique_remote_id is (bus_type, name)."
     },
     "password": {
-     "advanced": true
+     "advanced": false,
+     "group": "Broker",
+     "order": 40,
+     "tooltip": "Broker password."
     },
     "port": {
-     "advanced": true
+     "advanced": false,
+     "group": "Broker",
+     "order": 20,
+     "tooltip": "The broker's TCP port (1883; 8883 with TLS)."
     },
     "protocol": {
-     "advanced": true
+     "advanced": true,
+     "group": "Session",
+     "tooltip": "MQTT protocol version."
     },
     "qos": {
-     "advanced": true
+     "advanced": true,
+     "group": "Session",
+     "tooltip": "Quality of service for publishes and subscriptions."
     },
     "reconnect_max_delay": {
-     "advanced": true
+     "advanced": true,
+     "group": "Session",
+     "tooltip": "Longest wait before reconnecting.",
+     "unit": "s"
     },
     "reconnect_min_delay": {
-     "advanced": true
+     "advanced": true,
+     "group": "Session",
+     "tooltip": "Shortest wait before reconnecting.",
+     "unit": "s"
     },
     "remote_subscriptions": {
      "advanced": false,
      "tooltip": "Remote topics the proxy subscribes to on the foreign bus as soon as it is up; messages arriving on them are relayed into VOLTTRON (the same as the subscribe RPC)."
     },
     "tls": {
-     "advanced": true
+     "advanced": false,
+     "group": "Broker",
+     "order": 50,
+     "tooltip": "Connect with TLS."
     },
     "username": {
-     "advanced": true
+     "advanced": false,
+     "group": "Broker",
+     "order": 30,
+     "tooltip": "Broker user, when the broker requires one."
     }
    }
   },
@@ -5555,6 +5630,7 @@
    "description": "Parameters of protocol_proxy.protocol.nats.NATSProxy.\n\n``servers`` is one URL or a list of URLs; it is sent to the proxy as a comma-separated string.",
    "properties": {
     "connect_timeout": {
+     "advanced": true,
      "anyOf": [
       {
        "exclusiveMinimum": 0,
@@ -5565,7 +5641,10 @@
       }
      ],
      "default": null,
-     "title": "Connect Timeout"
+     "description": "Seconds to wait for the connection.",
+     "group": "Session",
+     "title": "Connect Timeout",
+     "unit": "s"
     },
     "local_subscriptions": {
      "description": "Remote topics to serve from local data as soon as the proxy is up: each is resolved through platform.presentation to a canonical resource whose publications are transformed and published to that remote topic continuously (the same as a SUBSCRIBE_LOCAL request).",
@@ -5576,6 +5655,7 @@
      "type": "array"
     },
     "max_reconnect_attempts": {
+     "advanced": true,
      "anyOf": [
       {
        "type": "integer"
@@ -5585,6 +5665,8 @@
       }
      ],
      "default": null,
+     "description": "Reconnect attempts before giving up; unset: forever.",
+     "group": "Session",
      "title": "Max Reconnect Attempts"
     },
     "name": {
@@ -5597,6 +5679,9 @@
       }
      ],
      "default": null,
+     "description": "Connection name shown to the server.",
+     "group": "Servers",
+     "order": 20,
      "title": "Name"
     },
     "nats_token": {
@@ -5609,6 +5694,9 @@
       }
      ],
      "default": null,
+     "description": "Authentication token, instead of user and password.",
+     "group": "Servers",
+     "order": 50,
      "title": "Nats Token"
     },
     "password": {
@@ -5621,9 +5709,13 @@
       }
      ],
      "default": null,
+     "description": "Server password.",
+     "group": "Servers",
+     "order": 40,
      "title": "Password"
     },
     "reconnect_time_wait": {
+     "advanced": true,
      "anyOf": [
       {
        "exclusiveMinimum": 0,
@@ -5634,7 +5726,10 @@
       }
      ],
      "default": null,
-     "title": "Reconnect Time Wait"
+     "description": "Seconds between reconnect attempts.",
+     "group": "Session",
+     "title": "Reconnect Time Wait",
+     "unit": "s"
     },
     "remote_subscriptions": {
      "description": "Remote topics the proxy subscribes to on the foreign bus as soon as it is up; messages arriving on them are relayed into VOLTTRON (the same as the subscribe RPC).",
@@ -5656,6 +5751,9 @@
        "type": "array"
       }
      ],
+     "description": "Server URL, or several separated by commas (nats://host:4222).",
+     "group": "Servers",
+     "order": 10,
      "title": "Servers"
     },
     "tls": {
@@ -5668,6 +5766,9 @@
       }
      ],
      "default": null,
+     "description": "Connect with TLS.",
+     "group": "Servers",
+     "order": 60,
      "title": "Tls"
     },
     "user": {
@@ -5680,6 +5781,9 @@
       }
      ],
      "default": null,
+     "description": "Server user, when the server requires one.",
+     "group": "Servers",
+     "order": 30,
      "title": "User"
     }
    },
@@ -5691,6 +5795,8 @@
    "x-hints": {
     "connect_timeout": {
      "advanced": true,
+     "group": "Session",
+     "tooltip": "Seconds to wait for the connection.",
      "unit": "s"
     },
     "local_subscriptions": {
@@ -5698,32 +5804,55 @@
      "tooltip": "Remote topics to serve from local data as soon as the proxy is up: each is resolved through platform.presentation to a canonical resource whose publications are transformed and published to that remote topic continuously (the same as a SUBSCRIBE_LOCAL request)."
     },
     "max_reconnect_attempts": {
-     "advanced": true
+     "advanced": true,
+     "group": "Session",
+     "tooltip": "Reconnect attempts before giving up; unset: forever."
     },
     "name": {
-     "advanced": true
+     "advanced": false,
+     "group": "Servers",
+     "order": 20,
+     "tooltip": "Connection name shown to the server."
     },
     "nats_token": {
-     "advanced": true
+     "advanced": false,
+     "group": "Servers",
+     "order": 50,
+     "tooltip": "Authentication token, instead of user and password."
     },
     "password": {
-     "advanced": true
+     "advanced": false,
+     "group": "Servers",
+     "order": 40,
+     "tooltip": "Server password."
     },
     "reconnect_time_wait": {
-     "advanced": true
+     "advanced": true,
+     "group": "Session",
+     "tooltip": "Seconds between reconnect attempts.",
+     "unit": "s"
     },
     "remote_subscriptions": {
      "advanced": false,
      "tooltip": "Remote topics the proxy subscribes to on the foreign bus as soon as it is up; messages arriving on them are relayed into VOLTTRON (the same as the subscribe RPC)."
     },
     "servers": {
-     "advanced": false
+     "advanced": false,
+     "group": "Servers",
+     "order": 10,
+     "tooltip": "Server URL, or several separated by commas (nats://host:4222)."
     },
     "tls": {
-     "advanced": true
+     "advanced": false,
+     "group": "Servers",
+     "order": 60,
+     "tooltip": "Connect with TLS."
     },
     "user": {
-     "advanced": true
+     "advanced": false,
+     "group": "Servers",
+     "order": 30,
+     "tooltip": "Server user, when the server requires one."
     }
    }
   },
