@@ -180,7 +180,8 @@ Then give them something to show:
   service repository) or create formats, transforms and resources from the UI; the bundled formats and transforms
   appear without any configuration.
 - Driver: store a registry and a device from the Devices tab (Discover for a reachable SunSpec, DNP3 or 2030.5
-  device, or Import for a CSV), or with `vctl config store platform.driver registry_configs/fake.csv fake.csv --csv`
+  device; "+ Device" with a registry file, an existing registry or an empty one; Import for a CSV on an existing
+  device), or with `vctl config store platform.driver registry_configs/fake.csv fake.csv --csv`
   and a `devices/<topic>` entry pointing at it, using the fake interface's sample files.
 - Resource Bridge and bus adapter: their configurations are written from the Bridges tab; the bus adapter needs a
   broker it can reach (`site_broker` in its config is the `BusConfig.name`).

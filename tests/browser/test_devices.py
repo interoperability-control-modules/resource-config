@@ -88,6 +88,33 @@ def test_add_device_needs_a_topic(ui):
     ui.cancel()
 
 
+def test_add_device_from_a_registry_file(ui):
+    """The create dialog takes the registry as a file (the default), an existing registry or an empty one; a CSV file
+    becomes the device's registry under the chosen name and the device opens in edit mode with its rows."""
+    ui.go('#/devices')
+    ui.button('+ Device').click()
+    dialog = ui.dialog
+    expect(dialog.locator('label.chk', has_text='from a file').locator('input.rad')).to_be_checked()
+    dialog.locator('input.seg').first.click()
+    ui.page.keyboard.type('site9/filed')
+    ui.button('Create', dialog).click()
+    expect(ui.toast('choose a registry file')).to_be_visible()
+    csv = 'Point Name,Address,Data Type,Writable,Data Source,Units\nW,40084,int16,FALSE,short_poll,W\nHz,40094,uint16,FALSE,short_poll,Hz\n'
+    dialog.locator('input[type=file]').set_input_files({'name': 'filed.csv', 'mimeType': 'text/csv', 'buffer': csv.encode()})
+    dialog.locator('input[placeholder^="registry_configs/"]').fill('filed_points.csv')
+    ui.page.keyboard.press('Tab')
+    ui.button('Create', dialog).click()
+    expect(ui.toast('device created')).to_be_visible()
+    expect(ui.page.locator('#main .rc .row1')).to_contain_text('devices/site9/filed')
+    expect(ui.page.locator('#main .rsec', has_text='Registry')).to_contain_text('filed_points.csv')
+    expect(ui.page.locator('#main .grid-table tr')).to_have_count(3)
+    ui.button('Cancel').click()
+    ui.go('#/devices')
+    ui.button('+ Device').click()
+    expect(ui.dialog.locator('label.chk', has_text='an existing registry')).to_be_visible()
+    ui.cancel()
+
+
 def test_discover_reviews_then_fills_and_applies_the_pending_set(ui):
     ui.go('#/devices?discover=1')
     dialog = ui.dialog

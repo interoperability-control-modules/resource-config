@@ -254,17 +254,39 @@ function deleteDevice(d) {
     onDelete: async () => { await api.deleteEntry('platform.driver', d.entry); toast('deleted', 'ok'); await refreshModel(false); navigate('devices'); } });
 }
 function addDevice() {
-  const form = { topic: '', driver_type: Object.keys((state.catalog || {}).interfaces || {})[0] || 'modbus', registry: '' };
+  const form = { topic: '', driver_type: Object.keys((state.catalog || {}).interfaces || {})[0] || 'modbus', source: 'file', registry: '', name: '' };
+  const existing = (state.model.registries || []).map((r) => [r.name, r.name.replace('registry_configs/', '')]);
+  const file = h('input', { type: 'file', accept: '.csv,.json,text/csv,application/json' });
+  const nameInput = input('', { mono: true, width: '100%', placeholder: 'registry_configs/<last topic segment>.csv', onChange: (v) => (form.name = v) });
+  const registryRow = h('span', {});
+  const renderRegistry = () => registryRow.replaceChildren(
+    form.source === 'existing' ? select(form.registry, existing, { blank: 'choose…', onChange: (v) => (form.registry = v), width: '100%' })
+      : form.source === 'file' ? h('div', {}, file, h('div', { style: { marginTop: '6px' } }, nameInput), note('CSV or JSON, as the driver reads it; the name it is stored under in the driver\'s store.'))
+      : note('an empty registry named after the topic, to fill in on the device\'s card'));
+  renderRegistry();
   dialog({ title: 'Add a device', body: h('div', {}, h('div', { class: 'grid kv1' },
     h('span', { class: 'k' }, 'Topic'), segmentsInput([], { separator: '/', onChange: (v) => (form.topic = v.join('/')) }),
     h('span', { class: 'k' }, 'Driver type'), select(form.driver_type, Object.keys((state.catalog || {}).interfaces || {}).map((i) => [i, i]), { onChange: (v) => (form.driver_type = v), width: '200px' }),
-    h('span', { class: 'k' }, 'Registry'), select('', (state.model.registries || []).map((r) => [r.name, r.name.replace('registry_configs/', '')]), { blank: 'new, named after the topic', onChange: (v) => (form.registry = v), width: '320px' })),
-    note('Creates the device entry (and an empty registry when none is chosen). Discover, which scans a unit and generates the registry, format and resource, is not wired to a generator yet.')),
+    h('span', { class: 'k' }, 'Registry'), radios('add-registry', form.source, [['file', 'from a file'], ...(existing.length ? [['existing', 'an existing registry']] : []), ['empty', 'empty, to fill in']], (v) => { form.source = v; renderRegistry(); }),
+    h('span', { class: 'k' }), registryRow),
+    note('Creates the device entry and its registry; the remote settings are edited next. Discover does the same from a scan of the device, with its format and resource.')),
     actions: [{ label: 'Cancel', onClick: (c) => c() }, { label: 'Create', primary: true, onClick: async (close) => {
       if (!form.topic) return toast('a topic is required', 'err');
+      const chosen = file.files && file.files[0];
+      if (form.source === 'file' && !chosen) return toast('choose a registry file', 'err');
+      if (form.source === 'existing' && !form.registry) return toast('choose a registry', 'err');
       try {
-        const registry = form.registry || `registry_configs/${form.topic.split('/').pop()}.csv`;
-        if (!form.registry) await api.putEntry('platform.driver', registry, { type: 'csv', text: 'Point Name,Address,Data Type,Writable,Data Source,Units\n' });
+        const defaultName = `registry_configs/${form.topic.split('/').pop()}.csv`;
+        let registry = form.registry;
+        if (form.source === 'file') {
+          registry = form.name.trim() || defaultName;
+          if (!registry.startsWith('registry_configs/')) registry = `registry_configs/${registry}`;
+          const text = await chosen.text(); const isJson = chosen.name.endsWith('.json') || text.trim().startsWith('[');
+          await api.putEntry('platform.driver', registry, isJson ? { type: 'csv', data: JSON.parse(text) } : { type: 'csv', text });
+        } else if (form.source === 'empty') {
+          registry = defaultName;
+          await api.putEntry('platform.driver', registry, { type: 'csv', text: 'Point Name,Address,Data Type,Writable,Data Source,Units\n' });
+        }
         await api.putEntry('platform.driver', `devices/${form.topic}`, { type: 'json', data: { registry_config: `config://${registry}`, remote_config: seedDefaults({ driver_type: form.driver_type, driver_role: 'client' }, ((state.catalog || {}).interfaces || {})[form.driver_type]), driver_type: form.driver_type } });
         close(); toast('device created', 'ok'); await refreshModel(false); navigate('devices', { topic: form.topic, edit: 1 });
       } catch (e) { toast(e.message, 'err'); } } }] });
