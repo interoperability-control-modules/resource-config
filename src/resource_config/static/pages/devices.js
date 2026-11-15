@@ -224,14 +224,19 @@ function remoteHealthRows(d) {
   const r = remoteHealthOf(d);
   if (!r) return [['remote health', 'not reported: the driver has not configured this device', 'warn']];
   const when = (t) => (t ? ago((Date.now() - Date.parse(t)) / 1000) : '—');
-  const failing = Object.keys(r.point_errors || {}).length;
+  // One remote (one connection) may serve several devices; the report is the remote's, the failing points are shown
+  // for this device only, and the other devices on the remote are named.
+  const mine = Object.entries(r.point_errors || {}).filter(([k]) => k.startsWith(`devices/${d.topic}/`));
+  const others = (r.devices || []).filter((x) => x !== `devices/${d.topic}`);
+  const failing = mine.length;
   const rows = [['remote health', r.status || '—', r.status === 'GOOD' ? 'ok' : r.status === 'BAD' ? 'err' : 'warn'],
     ['polls', `${r.polls ?? 0} · ${r.poll_failures ?? 0} failed${r.consecutive_failures ? ` · ${r.consecutive_failures} in a row` : ''}`, r.consecutive_failures ? 'err' : ''],
     ['last success', when(r.last_success)]];
+  if (others.length) rows.push(['remote shared with', others.map((x) => x.replace(/^devices\//, '')).join(', '), 'warn']);
   // the latest error is shown while the remote is failing; once it answers again only the time of the last failure stays
   if (r.last_error && (r.status !== 'GOOD' || r.consecutive_failures)) rows.push(['last error', `${r.last_error} (${when(r.last_failure)})`, 'err']);
   else if (r.last_failure) rows.push(['last failure', `${when(r.last_failure)}, recovered`]);
-  if (failing) rows.push(['failing points', `${failing}: ${Object.keys(r.point_errors).map((k) => k.split('/').pop()).slice(0, 4).join(', ')}${failing > 4 ? ' …' : ''}`, 'warn']);
+  if (failing) rows.push(['failing points', `${failing}: ${mine.map(([k]) => k.split('/').pop()).slice(0, 4).join(', ')}${failing > 4 ? ' …' : ''} · ${mine[0][1].slice(0, 90)}`, 'warn']);
   if (r.writes) rows.push(['writes', `${r.writes} · ${r.write_failures ?? 0} failed`, r.write_failures ? 'warn' : '']);
   if (r.protocol && typeof r.protocol === 'object') {
     // what the protocol adds: scalars as they are; a counter block (requests, successes, failures…) as one summary

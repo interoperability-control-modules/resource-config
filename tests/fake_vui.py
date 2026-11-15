@@ -221,9 +221,11 @@ def make_fake_vui() -> FastAPI:
                                                         'last_write_error': None, 'events': [], 'remote': "('tcp', '127.0.0.1', '15020', '1')", 'devices': ['devices/matrix/SunSpec/client'],
                                                         'protocol': {'protocol': 'modbus', 'transport': 'tcp', 'device_address': '127.0.0.1', 'unit_id': 1}},
                       'devices/matrix/DNP3/served': {'status': 'BAD', 'polls': 40, 'poll_failures': 40, 'consecutive_failures': 40, 'last_success': None, 'last_failure': '2026-11-14T19:10:05',
-                                                     'last_error': 'no master connected', 'last_poll_duration': None, 'point_errors': {'devices/matrix/DNP3/served/AI_1': 'offline'}, 'writes': 0, 'write_failures': 0,
+                                                     'last_error': 'no master connected', 'last_poll_duration': None,
+                                                     'point_errors': {'devices/matrix/DNP3/served/AI_1': 'offline', 'devices/matrix/DNP3/other/AI_7': 'offline'},   # the second belongs to another device on this remote
+                                                     'writes': 0, 'write_failures': 0,
                                                      'last_write_error': None, 'events': [{'time': '2026-11-14T19:10:05', 'event': 'poll failed: no master connected'}], 'remote': "('dnp3', '127.0.0.1', '20001')",
-                                                     'devices': ['devices/matrix/DNP3/served'], 'protocol': None}}
+                                                     'devices': ['devices/matrix/DNP3/served', 'devices/matrix/DNP3/other'], 'protocol': None}}
             if method == 'health':
                 return report
             return {'devices/matrix/SunSpec/client/701_W': {'active': True, 'last_value': 4000, 'last_updated': '2026-11-14T19:10:00', 'stale': False, 'error': None}}

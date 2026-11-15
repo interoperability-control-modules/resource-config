@@ -235,7 +235,8 @@ def test_device_health_card_shows_the_remotes_report(ui):
     card = ui.page.locator('#ctx .card', has=ui.page.locator('h4', has_text='Health'))
     expect(card.locator('.hrow', has_text='remote health').locator('.err')).to_have_text('BAD')
     expect(card).to_contain_text('no master connected')
-    expect(card).to_contain_text('failing points')
+    expect(card.locator('.hrow', has_text='failing points')).to_contain_text('1: AI_1 · offline')     # this device's points only
+    expect(card.locator('.hrow', has_text='remote shared with')).to_contain_text('matrix/DNP3/other')
 
 
 def test_live_state_is_re_read_on_a_timer_but_not_under_an_edit(ui):
