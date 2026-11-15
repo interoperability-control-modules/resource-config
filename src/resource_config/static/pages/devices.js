@@ -301,7 +301,7 @@ async function deleteRegistry(name) { try { await api.deleteEntry('platform.driv
 
 // Discover (design DS1/DS2): Source asks for what the generator needs; Review is read-only; the result is one pending set.
 function discoverDialog() {
-  const form = { protocol: 'sunspec', source: 'unit', dnp3_source: 'outstation', host: '', port: '', unit: 1, master_id: '', outstation_id: '', role: 'client', scaling: 'transform', topic: '', publish: 'multi', interval: '', registry_name: '', file: null, device_format: '' };
+  const form = { protocol: 'sunspec', source: 'unit', dnp3_source: 'outstation', host: '', port: '', unit: 1, master_id: '', outstation_id: '', role: 'client', scaling: 'driver', topic: '', publish: 'multi', interval: '', registry_name: '', file: null, device_format: '' };
   const where = h('div', { class: 'grid kv1' });
   const fileInput = () => h('input', { type: 'file', accept: '.json', onChange: (e) => (form.file = e.target.files[0]) });
   const renderWhere = () => {
@@ -314,8 +314,8 @@ function discoverDialog() {
         h('span', { class: 'k' }, 'Unit id'), input(form.unit, { num: true, width: '90px', onChange: (v) => (form.unit = v) }));
       else where.append(h('span', { class: 'k' }, 'Scan file'), fileInput());
       where.append(h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (slave)']], (v) => (form.role = v)),
-        h('span', { class: 'k' }, 'Scale factors ', info("Who applies SunSpec's _SF scale factors. transform: the driver publishes raw registers and the _SF points; the device format's transform scales them in the service. driver: each scaled point carries sunssf(<its _SF register>) in the registry's Transform column, the driver publishes engineering values and the _SF points are not published.")),
-        select(form.scaling, [['transform', 'transform'], ['driver', 'driver']], { onChange: (v) => (form.scaling = v), width: '200px' }));
+        h('span', { class: 'k' }, 'Scale factors applied by: ', info("Who turns SunSpec's raw integers into engineering values with the _SF scale factors. driver: each scaled point carries sunssf(<its _SF register>) in the registry's Transform column; the driver publishes engineering values and the _SF points are not published. service: the driver publishes the raw registers and the _SF points, and the service's device-format transform scales them.")),
+        select(form.scaling, [['driver', 'driver'], ['service', 'service']], { onChange: (v) => (form.scaling = v), width: '200px' }));
     }
     if (form.protocol === 'dnp3') {
       // IEEE 1815.2 fixes what every index means; a device adds only which indexes it has. An integrity poll of a

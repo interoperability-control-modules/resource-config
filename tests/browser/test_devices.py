@@ -92,6 +92,8 @@ def test_discover_reviews_then_fills_and_applies_the_pending_set(ui):
     ui.go('#/devices?discover=1')
     dialog = ui.dialog
     expect(dialog.locator('h4')).to_have_text('Discover a device')
+    expect(dialog.locator('.k', has_text='Scale factors applied by:')).to_be_visible()
+    expect(dialog.locator('select:has(option[value="service"])')).to_have_value('driver')
     dialog.locator('input[placeholder="192.168.1.20"]').fill('10.0.0.21')
     ui.page.keyboard.press('Tab')
     dialog.locator('input[placeholder="site1/feeder1/pv_inverter"]').fill('site9/pv_test')

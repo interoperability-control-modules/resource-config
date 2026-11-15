@@ -27,7 +27,7 @@ SERVICE = {'mappings': [
      'resource': {'data_format': 'openfmb.solar.control', 'owner': 'platform.driver', 'references': ['matrix', 'SunSpec', 'client'], 'encoding': 'protobuf', 'edition': '2.2'}},
     {'uai': ['matrix', 'DNP3', 'served'], 'resource_type': 'canonical',
      'resource': {'data_format': 'dnp3_served', 'owner': 'platform.driver', 'publication_topic': 'devices/matrix/DNP3/served/all', 'rpc_topic': 'devices/matrix/DNP3/served'}},
-], 'formats': {'sunspec_client': {'hub': False, 'scaling': 'transform', 'fields': ['701_W', '701_W_SF']},
+], 'formats': {'sunspec_client': {'hub': False, 'scaling': 'service', 'fields': ['701_W', '701_W_SF']},
                'dnp3_served': {'hub': False, 'fields': ['AI_1']}},
     'transforms': [{'input_format': 'sunspec_client', 'output_format': 'sunspec', 'pattern': {'#': 'transform(device_values())'}}]}
 BRIDGE = {'bridges': [
@@ -226,7 +226,7 @@ def make_fake_vui() -> FastAPI:
                     'unmapped_targets': [{'target': 'readingMMXU.Hz.mag', 'lost_at': '61850 → openfmb.solar'}]}
         if method == 'list_formats':
             return {'61850': {'hub': True, 'declared': False, 'proto': None, 'scaling': None, 'universe': 400, 'edges_out': ['sunspec'], 'edges_in': ['sunspec']},
-                    'sunspec_client': {'hub': False, 'declared': True, 'proto': None, 'scaling': 'transform', 'universe': 2, 'edges_out': ['sunspec'], 'edges_in': []}}
+                    'sunspec_client': {'hub': False, 'declared': True, 'proto': None, 'scaling': 'service', 'universe': 2, 'edges_out': ['sunspec'], 'edges_in': []}}
         if method == 'list_transforms':
             return [{'input': 'sunspec', 'output': '61850', 'origin': 'bundled', 'retention': 0.7, 'lossiness_override': None, 'fields': 87, 'unmapped_targets': 3},
                     {'input': 'sunspec_client', 'output': 'sunspec', 'origin': 'local', 'retention': 0.93, 'lossiness_override': None, 'fields': 2, 'unmapped_targets': 0}]
