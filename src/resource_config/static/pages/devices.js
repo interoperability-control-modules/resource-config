@@ -314,7 +314,7 @@ function discoverDialog() {
         h('span', { class: 'k' }, 'Unit id'), input(form.unit, { num: true, width: '90px', onChange: (v) => (form.unit = v) }));
       else where.append(h('span', { class: 'k' }, 'Scan file'), fileInput());
       where.append(h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (slave)']], (v) => (form.role = v)),
-        h('span', { class: 'k' }, 'Scale factors ', info("transform: the device format's transform applies the scale factors; driver: each point scales itself with scale_sf() in its Transform column.")),
+        h('span', { class: 'k' }, 'Scale factors ', info("Who applies SunSpec's _SF scale factors. transform: the driver publishes raw registers and the _SF points; the device format's transform scales them in the service. driver: each scaled point carries sunssf(<its _SF register>) in the registry's Transform column, the driver publishes engineering values and the _SF points are not published.")),
         select(form.scaling, [['transform', 'transform'], ['driver', 'driver']], { onChange: (v) => (form.scaling = v), width: '200px' }));
     }
     if (form.protocol === 'dnp3') {
