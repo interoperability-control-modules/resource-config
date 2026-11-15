@@ -170,8 +170,17 @@ def test_saving_an_alias_with_a_delivery_goes_to_pending_changes(ui):
     ui.page.keyboard.type('site9/staged_alias')
     dialog.locator('select').first.select_option('openfmb.solar.reading')
     dialog.locator('label.chk', has_text='a remote topic on a bus').locator('input.rad').check()
+    # a device-sourced resource: the bridge that publishes the alias is part of the delivery, on by default
+    expect(dialog.locator('label.chk', has_text='publish it from device')).to_be_visible()
+    dialog.locator('label.chk', has_text='inbound').locator('input.rad').check()
+    expect(dialog.locator('label.chk', has_text='write it to device')).to_be_visible()
+    expect(dialog.locator('input[placeholder="empty: all points"]')).to_be_visible()
+    dialog.locator('label.chk', has_text='outbound').locator('input.rad').check()
     ui.button('Save', dialog).click()
     expect(ui.toast('staged in Pending changes')).to_be_visible()
-    assert ui.page.evaluate('location.hash') == '#/pending'
-    expect(ui.page.locator('#main table')).to_contain_text('platform.bus_adapter')
+    expect(ui.page).to_have_url(re.compile(r'#/pending$'))      # after the model refresh that follows the staging
+    table = ui.page.locator('#main table')
+    expect(table).to_contain_text('platform.bus_adapter')
+    expect(table).to_contain_text('platform.resource_bridge')
+    expect(table).to_contain_text('bridge publishing')
     ui.button('Discard all').click()

@@ -250,14 +250,27 @@ function aliasDialog(c, existing = null) {
   let closeAlias = () => {};
   if (!c && !existing) return toast('select a canonical resource first', 'err');
   const form = { uai: existing ? [...existing.uai] : [], format: existing ? existing.format || '' : '', encoding: existing ? existing.encoding || 'json' : 'json', edition: existing ? existing.edition || '' : '',
-    parameters_text: '', delivery: 'none', bus: (state.model.buses[0] || {}).name || '', direction: 'outbound', device: '' };
+    parameters_text: '', delivery: 'none', bus: (state.model.buses[0] || {}).name || '', direction: 'outbound', device: '', bridge: true, points: '' };
   const parametersOf = () => { const t = (form.parameters_text || '').trim(); if (!t) return null; const v = JSON.parse(t); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('parameters must be a JSON object'); return v; };
   const chain = h('div', { class: 'note' }, 'choose a format to check the chain');
   const checkChain = async () => { if (!form.format || !c) return; chain.textContent = 'checking…'; try { const r = await api.resolve(c.uai, form.format, form.delivery === 'device' ? 'write' : 'read'); chain.replaceChildren(steps(r.path || []), note(`retention ${r.retention != null ? Math.round(r.retention * 100) + ' %' : '—'}`)); } catch (e) { chain.replaceChildren(h('span', { class: 'warn' }, `no chain: ${e.message} `), btn('Create transform ▸', () => navigate('transforms', { input: c.format, output: form.format }))); } };
   const deliveryFields = h('div', { class: 'grid kv1', style: { marginTop: '8px' } });
   const renderDelivery = () => { deliveryFields.replaceChildren();
-    if (form.delivery === 'remote_topic') deliveryFields.append(labelled('Bus', 'The bus adapter connection that carries the topic.'), busChoice(form, () => closeAlias()),
-      labelled('Direction', 'Outbound publishes the alias to the remote bus; inbound relays what the remote publishes.'), radios('dir', form.direction, [['outbound', 'outbound', 'local → remote'], ['inbound', 'inbound', 'remote → local']], (v) => (form.direction = v)));
+    if (form.delivery === 'remote_topic') {
+      deliveryFields.append(labelled('Bus', 'The bus adapter connection that carries the topic.'), busChoice(form, () => closeAlias()),
+        labelled('Direction', 'Outbound publishes the alias to the remote bus; inbound relays what the remote publishes.'), radios('dir', form.direction, [['outbound', 'outbound', 'local → remote'], ['inbound', 'inbound', 'remote → local']], (v) => { form.direction = v; renderDelivery(); }));
+      // The adapter relays a local bus topic; for a resource that comes from a device, the only thing that puts the alias
+      // on the local bus (outbound) or carries it into the device (inbound) is a Resource Bridge. It is part of the
+      // delivery unless another agent publishes the alias itself.
+      if (c && c.source && c.source.kind === 'device') {
+        const outbound = form.direction === 'outbound';
+        deliveryFields.append(labelled('Bridge', outbound ? 'The Resource Bridge that publishes this alias on the local bus from the device\'s resource, so the adapter has something to relay. Leave off only when another agent publishes the alias itself.'
+          : 'The Resource Bridge that writes what arrives on this topic into the device. Leave off only when another agent consumes the alias itself.'),
+          h('label', { class: 'chk' }, checkbox(form.bridge, (v) => { form.bridge = v; renderDelivery(); }), ' ', outbound ? `publish it from device ${c.source.device}` : `write it to device ${c.source.device}`));
+        if (form.bridge && !outbound) deliveryFields.append(labelled('Points', 'Only these points of the incoming message are written (comma-separated point names); empty writes every point the chain maps. A control usually names just the setpoint and its enable, so the rest of the device is not overwritten.'),
+          input(form.points, { placeholder: 'empty: all points', width: '100%', mono: true, onChange: (v) => (form.points = v) }));
+      }
+    }
     if (form.delivery === 'device') deliveryFields.append(labelled('Device', 'The device the Resource Bridge writes the alias to.'), select(form.device, state.model.devices.map((d) => [d.topic, d.topic]), { blank: 'choose…', onChange: (v) => (form.device = v), width: '320px' }));
     if (form.delivery === 'local_topic') deliveryFields.append(h('span', { class: 'k' }, 'Local topic'), note('a Resource Bridge bus end publishes the alias on its UAI; any agent may subscribe'));
     checkChain(); };
@@ -344,6 +357,16 @@ async function aliasEntries(c, form) {
     const key = form.direction === 'outbound' ? 'local_subscriptions' : 'remote_subscriptions';
     adapter[key] = [...new Set([...(adapter[key] || []), topic])];
     entries.push({ identity: 'platform.bus_adapter', name: 'config', type: 'json', data: cfg, summary: `${form.direction} remote topic ${topic} on ${form.bus}` });
+    if (form.bridge && c.source && c.source.kind === 'device') {
+      const bridge = await api.entry('platform.resource_bridge', 'config').catch(() => ({ data: { bridges: [] } }));
+      const bcfg = { ...(bridge.data || {}) }; bcfg.bridges = [...(bcfg.bridges || [])];
+      const raw = form.direction === 'outbound' ? { source: c.uai, target: { uai: aliasUai, bus: true } } : { source: { uai: aliasUai, bus: true }, target: c.uai };
+      const points = form.points.split(',').map((x) => x.trim()).filter(Boolean);
+      if (points.length) raw.points = points;
+      bcfg.bridges.push(raw);
+      entries.push({ identity: 'platform.resource_bridge', name: 'config', type: 'json', data: bcfg,
+        summary: form.direction === 'outbound' ? `bridge publishing ${topic} from device ${c.source.device}` : `bridge writing ${topic} to device ${c.source.device}${points.length ? ` (${points.join(', ')})` : ''}` });
+    }
   }
   if (form.delivery === 'local_topic' || form.delivery === 'device') {
     const bridge = await api.entry('platform.resource_bridge', 'config').catch(() => ({ data: { bridges: [] } }));
