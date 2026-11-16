@@ -134,10 +134,11 @@ def test_openfmb_alias_fills_the_uai_from_the_format_and_the_mrid_once(ui):
     expect(dialog.locator('.k', has_text='mRID')).to_be_hidden()
     dialog.locator('select').first.select_option('openfmb.solar.reading')
     expect(dialog.locator('.k', has_text='mRID')).to_be_visible()
-    assert chips(dialog) == ['openfmb', 'solarmodule', 'SolarReadingProfile']
+    # this device already has an mRID (its existing alias), so the UAI is complete at once
+    assert chips(dialog) == ['openfmb', 'solarmodule', 'SolarReadingProfile', '7d1a2b3c-0000-4000-8000-000000000001']
     ui.button('new mRID', dialog).click()
     segments = chips(dialog)
-    assert len(segments) == 4 and len(segments[3]) == 36, segments
+    assert len(segments) == 4 and len(segments[3]) == 36 and segments[3] != '7d1a2b3c-0000-4000-8000-000000000001', segments
     import json
     assert json.loads(dialog.locator('input[placeholder^=\'{"mrid"\']').input_value()) == {'mrid': segments[3]}
     dialog.locator('input[placeholder="device mRID, a UUID"]').fill('7d1a2b3c-0000-4000-8000-000000000011')
@@ -184,3 +185,19 @@ def test_saving_an_alias_with_a_delivery_goes_to_pending_changes(ui):
     expect(table).to_contain_text('platform.resource_bridge')
     expect(table).to_contain_text('bridge publishing')
     ui.button('Discard all').click()
+
+
+def test_a_second_openfmb_alias_starts_from_the_devices_mrid(ui):
+    """The mRID identifies the device: a new OpenFMB alias of a canonical that already has one offers the same mRID, in
+    the UAI and in the parameters, so reading and control profiles name one device."""
+    ui.go(CANONICAL)
+    ui.button('+ Alias', ui.page.locator('#side')).click()
+    dialog = ui.dialog
+    dialog.locator('select').first.select_option('openfmb.solar.control')
+    mrid = dialog.locator('input[placeholder="device mRID, a UUID"]')
+    expect(mrid).to_have_value('7d1a2b3c-0000-4000-8000-000000000001')      # the fake's reading alias of this device
+    assert chips(dialog) == ['openfmb', 'solarmodule', 'SolarControlProfile', '7d1a2b3c-0000-4000-8000-000000000001']
+    expect(dialog).to_contain_text("the device's mRID")
+    import json
+    assert json.loads(dialog.locator('input[placeholder^=\'{"mrid"\']').input_value()) == {'mrid': '7d1a2b3c-0000-4000-8000-000000000001'}
+    ui.cancel()

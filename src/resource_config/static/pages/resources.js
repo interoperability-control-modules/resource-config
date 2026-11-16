@@ -298,14 +298,32 @@ function aliasDialog(c, existing = null) {
     form.parameters_text = Object.keys(params).length ? JSON.stringify(params) : '';
     parametersInput.value = form.parameters_text;
   };
-  const existingMrid = (existing && existing.parameters && existing.parameters.mrid) || (form.uai.length && UUID.test(form.uai[form.uai.length - 1]) ? form.uai[form.uai.length - 1] : '');
+  // The mRID identifies the device, so every OpenFMB alias of one canonical carries the same one: the canonical's own
+  // parameter when it has it, else what its existing aliases use. A new alias starts from that; a fresh mRID is for a
+  // device that has none yet.
+  const deviceMrid = () => {
+    if (!c) return '';
+    if (c.parameters && c.parameters.mrid) return String(c.parameters.mrid);
+    for (const a of (state.model.resources.aliases || []).filter((x) => c.aliases && c.aliases.includes(x.topic))) {
+      if (a.parameters && a.parameters.mrid) return String(a.parameters.mrid);
+      const last = a.uai && a.uai[a.uai.length - 1];
+      if (last && UUID.test(last)) return last;
+    }
+    return '';
+  };
+  const knownMrid = deviceMrid();
+  const existingMrid = (existing && existing.parameters && existing.parameters.mrid) || (form.uai.length && UUID.test(form.uai[form.uai.length - 1]) ? form.uai[form.uai.length - 1] : '') || knownMrid;
+  if (!existing && knownMrid) form.mrid_from_device = true;
   const mridInput = input(existingMrid, { mono: true, width: '340px', placeholder: 'device mRID, a UUID', onChange: (v) => applyMrid(v) });
-  const mridRow = h('span', { class: 'row' }, mridInput, btn('new mRID', () => { mridInput.value = crypto.randomUUID(); applyMrid(mridInput.value); }));
+  const mridRow = h('span', { class: 'row' }, mridInput, btn('new mRID', () => { mridInput.value = crypto.randomUUID(); applyMrid(mridInput.value); }),
+    knownMrid && !existing ? note(`the device's mRID, as its other alias${c && c.aliases && c.aliases.length === 1 ? '' : 'es'} use it; a new one would present this as another device`) : null);
   const mridLabel = labelled('mRID', 'The device\'s identity in OpenFMB: a UUID assigned once to this device (new mRID), or one it already has. It is the last segment of the topic and the identifiedObject.mRID of every message header; both are set from here.');
   const showMrid = () => { const on = !!protoOf(form.format); mridLabel.classList.toggle('hidden', !on); mridRow.classList.toggle('hidden', !on); };
   const formatSelect = select(form.format, formatOptions().filter((f) => !c || f !== c.format).map((f) => [f, f]), { blank: 'choose…', onChange: (v) => {
     form.format = v; const prefix = protoOf(v);
+    if (prefix && !mridInput.value.trim() && knownMrid) mridInput.value = knownMrid;
     if (prefix && (!form.uai.length || form.uai[0] === 'openfmb')) { form.uai = [...prefix, ...(mridInput.value.trim() ? [mridInput.value.trim()] : [])]; renderUai(); }
+    if (prefix && mridInput.value.trim()) applyMrid(mridInput.value, false);          // parameters.mrid follows
     showMrid(); checkChain(); } });
   renderUai(); showMrid();
   const body = h('div', {},
@@ -348,6 +366,11 @@ async function aliasEntries(c, form) {
   if (form.edition) resource.edition = form.edition;
   if (form.parameters_text && form.parameters_text.trim()) resource.parameters = JSON.parse(form.parameters_text);
   data.mappings.push({ uai: aliasUai, resource_type: 'alias', resource });
+  const mrid = resource.parameters && resource.parameters.mrid;
+  if (mrid) {   // the device's identity, recorded once on its canonical resource so every alias of it inherits the same mRID
+    const canonical = data.mappings.find((m) => m.resource_type === 'canonical' && topicOf(m.uai) === c.topic);
+    if (canonical && !(canonical.resource.parameters || {}).mrid) canonical.resource.parameters = { ...(canonical.resource.parameters || {}), mrid };
+  }
   const entries = [{ identity: 'platform.presentation', name: 'config', type: 'json', data, summary: `alias ${topic} (${form.format}, ${form.encoding}${form.edition ? ' ' + form.edition : ''})` }];
   if (form.delivery === 'remote_topic') {
     const bus = await api.entry('platform.bus_adapter', 'config').catch(() => ({ data: { adapters: [] } }));
