@@ -42,9 +42,37 @@ export const btn = (label, onClick, { primary = false, small = true, title } = {
   h('span', { class: `btn${small ? ' sm' : ''}${primary ? ' pri' : ''}`, onClick, title, tabindex: '0', role: 'button',
     onKeydown: (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.currentTarget.classList.contains('dis')) { e.preventDefault(); e.currentTarget.click(); } } }, label);
 export const mb = (label, value) => h('span', { class: 'mb' }, label + ' ', h('b', {}, value));
+// A key to the marks a list uses: a small labelled box, one entry per mark.
+export const key = (...entries) => h('fieldset', { class: 'key' }, h('legend', {}, 'Key'), ...entries.map((e) => h('span', {}, ...(Array.isArray(e) ? e : [e]))));
+// ---- display names. The data keeps its real names (registry columns, package names, model descriptions); only what
+// is drawn changes. Rules, in order: platform-specific phrases first, then the bare product name is dropped.
+const DISPLAY_RULES = [
+  [/relayed into VOLTTRON/gi, 'relayed into the local system'],
+  [/into VOLTTRON\b/gi, 'into the local system'],
+  [/\bVOLTTRON's own (message )?bus\b/gi, 'the bus'],
+  [/\bthe VOLTTRON (message )?bus\b/gi, 'the bus'],
+  [/\bVOLTTRON (message )?bus\b/gi, 'the bus'],
+  [/\bEclipse VOLTTRON\b/g, 'the platform'],
+  [/\bVOLTTRON[ _-]+/gi, ''],
+  [/\bVOLTTRON\b/g, 'the platform'],
+];
+export const displayText = (s) => (typeof s === 'string' ? DISPLAY_RULES.reduce((acc, [re, to]) => acc.replace(re, to), s).replace(/^\s*(\w)/, (m, c) => c.toUpperCase()) : s);
+// A registry column header. The point-name column keeps its CSV header in the file; on screen it is "Point Name",
+// or "System Point Name" when the registry already has a column of that name.
+export const displayColumn = (name, siblings = []) => {
+  if (/^volttron[ _]?point[ _]?name$/i.test(name)) return siblings.some((c) => c !== name && /^point[ _]?name$/i.test(c)) ? 'System Point Name' : 'Point Name';
+  return displayText(name);
+};
+// A distribution name as the platform reports it (volttron-platform-driver-2.0.0rc9) shown as "Platform Driver 2.0.0rc9".
+export const packageLabel = (name) => {
+  if (!name) return '—';
+  const m = /^(.*?)[-_](\d[\w.+-]*)$/.exec(name);
+  const base = (m ? m[1] : name).replace(/^volttron[-_]/i, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return m ? `${base} ${m[2]}` : base;
+};
 // Tooltips are drawn by CSS from data-tip (see .tip in styles.css), so they show on hover without the browser's delay.
-export const info = (tip) => h('span', { class: 'tip note', 'data-tip': tip }, 'ⓘ');
-export const labelled = (label, tip) => (tip ? h('span', { class: 'k tip', 'data-tip': tip }, label, ' ', h('span', { class: 'note' }, 'ⓘ')) : h('span', { class: 'k' }, label));
+export const info = (tip) => h('span', { class: 'tip note', 'data-tip': displayText(tip) }, 'ⓘ');
+export const labelled = (label, tip) => (tip ? h('span', { class: 'k tip', 'data-tip': displayText(tip) }, displayText(label), ' ', h('span', { class: 'note' }, 'ⓘ')) : h('span', { class: 'k' }, displayText(label)));
 
 // ---- the card: header with identity, badges, boxes and buttons; sections; collapsed rows.
 export function card({ title, badge, boxes = [], buttons = [], sections = [] }) {
@@ -95,7 +123,10 @@ export function dialog({ title, body, actions = [], width = 760 }) {
     if (e.key === 'Escape') { e.preventDefault(); close(); return; }
     if (e.key !== 'Enter' || e.target.tagName === 'TEXTAREA' || e.target.closest('.btn') || e.altKey || e.ctrlKey || e.metaKey) return;
     const primary = box.querySelector('.btn.pri:not(.dis)');
-    if (primary) { e.preventDefault(); e.target.blur(); primary.click(); }    // blur first so a pending change event lands in the form
+    if (primary) {
+      e.preventDefault(); e.target.blur(); primary.click();    // blur first so a pending change event lands in the form
+      if (document.body.contains(box) && document.activeElement === document.body) e.target.focus();    // the dialog stayed (validation failed): keep the keyboard in it so Escape still closes
+    }
   });
   document.body.append(overlay);
   setTimeout(() => { const first = box.querySelector('input:not([type=checkbox]):not([type=radio]), select, textarea'); if (first) first.focus(); }, 0);
@@ -204,7 +235,9 @@ export function schemaForm(schema, value, { onChange, hide = [], groups = null, 
       const control = controlFor(name, prop, defs, state[name], hint, defaults[name], (v) => { state[name] = v; onChange && onChange(name, v, state); });
       const label = labelled(prettyName(name), hint.tooltip);
       const matches = (v, actual) => (Array.isArray(v) ? v.map(String).includes(actual) : String(v) === actual);
-      const show = hint.show_when ? () => Object.entries(hint.show_when).every(([k, v]) => matches(v, String(state[k] ?? defaults[k] ?? ''))) : null;
+      // A gating field the entry does not carry takes the schema's default, as the card's read-only view does (a
+      // discovered DNP3 client has no driver_role; the driver's default is master, which shows the outstation address).
+      const show = hint.show_when ? () => Object.entries(hint.show_when).every(([k, v]) => matches(v, String(state[k] ?? defaults[k] ?? (props[k] || {}).default ?? ''))) : null;
       const row = [label, h('span', { class: 'v', style: { display: 'flex', alignItems: 'center', gap: '6px' } }, control, hint.unit ? note(hint.unit) : null)];
       if (show) { const update = () => row.forEach((r) => r.classList.toggle('hidden', !show())); update(); container.addEventListener('rc:change', update); }
       grid.append(...row);
@@ -251,5 +284,5 @@ function typesOf(prop) {
   return set;
 }
 function coerce(v, types) { if (v === '') return null; if (types.has('integer')) return Number.isNaN(Number(v)) ? v : Number(v); if (types.has('boolean')) return v === 'true'; return v; }
-export function prettyName(name) { return name.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()); }
+export function prettyName(name) { return displayText(displayColumn(name).replace(/_/g, ' ')).replace(/^./, (c) => c.toUpperCase()); }
 export function ago(seconds) { if (seconds == null) return '—'; if (seconds < 60) return `${Math.round(seconds)} s ago`; if (seconds < 3600) return `${Math.round(seconds / 60)} min ago`; return `${(seconds / 3600).toFixed(1)} h ago`; }

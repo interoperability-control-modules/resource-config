@@ -1,6 +1,6 @@
 // Bridges: device bridges of the Resource Bridge as a source tree; remote topics of the bus adapter grouped by bus.
 import { api } from '../api.js';
-import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, steps, meter, toast, dialog, select, input, radios, checkbox, labelled } from '../ui.js';
+import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, steps, meter, toast, dialog, select, input, radios, checkbox, labelled, key } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, checksCard, healthCard, chainReport, activityCard, settingsDialog } from './common.js';
 
@@ -9,11 +9,14 @@ export const railBadges = (s) => [h('span', { class: 'pill n' }, String(s.model.
 
 export function render({ side, main, ctx, params }) {
   const m = state.model;
-  const bridge = m.bridges.find((b) => b.name === params.bridge) || (!params.topic ? m.bridges[0] : null);
-  const remote = params.topic ? m.remote_topics.find((t) => t.topic === params.topic) : null;
+  // Selection: what the route names; else the first bridge, else the first remote topic.
+  const nothingNamed = !params.bridge && !params.topic;
+  const bridge = m.bridges.find((b) => b.name === params.bridge) || (nothingNamed ? m.bridges[0] : null);
+  const remote = m.remote_topics.find((t) => t.topic === params.topic) || (nothingNamed && !bridge ? m.remote_topics[0] : null);
   if (side) side.append(tree(m, bridge, remote));
   if (remote) renderRemote(main, ctx, remote);
   else if (bridge) renderBridge(main, ctx, bridge);
+  else if (m.bridges.length || m.remote_topics.length) main.append(h('div', { class: 'empty' }, 'Select a bridge or a remote topic in the list on the left.'));
   else main.append(h('div', { class: 'empty' }, 'No bridges or remote topics. ', btn('+ Device bridge', addBridge), ' ', btn('+ Remote topic', addRemote)));
 }
 function tree(m, bridge, remote) {
@@ -33,7 +36,7 @@ function tree(m, bridge, remote) {
   const rtl = h('div', { class: 'rtl' });
   for (const [bus, list] of byBus) { rtl.append(h('div', { class: 'grp' }, bus, ' ', h('span', { class: 'n' }, String(list.length)), ' ', note(list[0].bus_type || '')));
     for (const t of list) rtl.append(h('div', { class: `row${remote === t ? ' on' : ''}`, style: { cursor: 'pointer' }, onClick: () => navigate('bridges', { topic: t.topic }) }, dot(t.alias ? 'ok' : 'warn'), h('span', { class: 'ic', title: t.direction }, t.direction === 'outbound' ? '⇈' : '⇊'), uai(t.topic.split('/')), t.wildcard ? tag('wildcard') : null)); }
-  el.append(rtl, h('div', { class: 'bar', style: { marginTop: '4px' } }, btn('+ Remote topic', addRemote)), h('div', { class: 'legend' }, h('span', {}, '▣ device end'), h('span', {}, '◎ bus topic end'), h('span', {}, '⇈ outbound'), h('span', {}, '⇊ inbound')));
+  el.append(rtl, h('div', { class: 'bar', style: { marginTop: '4px' } }, btn('+ Remote topic', addRemote)), key('▣ a device as a bridge end', '◎ a bus topic as a bridge end', '⇈ outbound, local → bus', '⇊ inbound, bus → local'));
   return el;
 }
 function renderBridge(main, ctx, b) {
@@ -64,7 +67,7 @@ function renderBridge(main, ctx, b) {
       ...(tDev && tDev.registry_rows && tDev.driver_role !== 'client' ? [[tDev.registry_rows.some((r) => (r['Data Source'] || '').toLowerCase() === 'server') ? 'ok' : 'warn', 'target rows writable (Data Source = server)']] : []),
       ...(m.bridges.some((o) => o !== b && o.source.uai.join('/') === b.target.uai.join('/') && o.target.uai.join('/') === b.source.uai.join('/')) ? [['warn', 'pairs with a bridge in the other direction: the echo window applies']] : [])]),
     h('div', { class: 'card' }, h('h4', {}, 'Write tracking'), note('Only changes are written. What the target holds is known from its publications, this agent\'s writes and the driver\'s last RPC when older than stale_after.')),
-    activityCard(b.stats));
+    liveActivity(b));
 }
 function renderRemote(main, ctx, t) {
   const alias = state.model.resources.aliases.find((a) => a.topic === t.alias || a.topic === t.topic);
@@ -107,7 +110,8 @@ const addBridge = () => bridgeDialog();
 // Add or edit a remote topic: an alias UAI relayed on a bus in one direction.
 function remoteDialog(existing = null) {
   const m = state.model; const form = { bus: existing ? existing.bus : (m.buses[0] || {}).name || '', direction: existing ? existing.direction : 'outbound', topic: existing ? existing.topic : '' };
-  dialog({ title: existing ? `Edit remote topic ${existing.topic}` : 'Add a remote topic', width: 640, body: h('div', { class: 'grid kv1' }, labelled('Bus', 'The bus adapter connection that carries the topic.'), select(form.bus, m.buses.map((b) => [b.name, `${b.name} · ${b.bus_type || ''}`]), { onChange: (v) => (form.bus = v), width: '260px' }),
+  let close = () => {};
+  close = dialog({ title: existing ? `Edit remote topic ${existing.topic}` : 'Add a remote topic', width: 640, body: h('div', { class: 'grid kv1' }, labelled('Bus', 'The bus adapter connection that carries the topic.'), busChoice(form, () => close()),
     labelled('Direction', 'Outbound publishes the local alias to the remote bus; inbound relays what the remote publishes.'), radios('rd', form.direction, [['outbound', 'outbound', 'local → remote'], ['inbound', 'inbound', 'remote → local']], (v) => (form.direction = v)),
     labelled('Topic', 'The alias UAI, which is also the remote topic; the alias says how the payload is encoded.'), select(form.topic, m.resources.aliases.map((a) => [a.topic, a.topic]), { blank: 'an alias UAI…', onChange: (v) => (form.topic = v), width: '100%' })),
     actions: [{ label: 'Cancel', onClick: (c) => c() }, { label: 'Save', primary: true, onClick: async (close) => { if (!form.topic || !form.bus) return toast('bus and topic are required', 'err');
@@ -116,6 +120,23 @@ function remoteDialog(existing = null) {
         const adapter = data.adapters.find((a) => (a.name || a.host) === form.bus); if (!adapter) throw new Error('bus not found');
         const key = form.direction === 'outbound' ? 'local_subscriptions' : 'remote_subscriptions'; adapter[key] = [...new Set([...(adapter[key] || []), form.topic])];
         await api.putEntry('platform.bus_adapter', 'config', { type: 'json', data }); close(); toast('saved', 'ok'); await refreshModel(false); navigate('bridges', { topic: form.topic }); } catch (e) { toast(e.message, 'err'); } } }] });
+}
+// The live card of this page: the bridge's activity statistics, replaced in place on every live tick.
+function liveActivity(b) { const card = activityCard(b.stats); card.classList.add('live'); return card; }
+export function renderLive({ ctx, params }) {
+  const m = state.model;
+  const b = m.bridges.find((x) => x.name === params.bridge) || (!params.topic ? m.bridges[0] : null);
+  const old = ctx && ctx.querySelector('.card.live');
+  if (b && old) old.replaceWith(liveActivity(b));
+}
+// The bus row of a dialog: the buses the adapter has, and the way to the adapter's settings when the one wanted is
+// not there yet (or none is). The settings dialog saves to the adapter; the caller's dialog is closed first.
+export function busChoice(form, closeDialog) {
+  const buses = state.model.buses || [];
+  const toSettings = () => { closeDialog(); settingsDialog('platform.bus_adapter'); };
+  if (!buses.length) return h('span', { class: 'row' }, note('no bus yet'), btn('Configure the bus adapter ▸', toSettings));
+  return h('span', { class: 'row' }, select(form.bus, buses.map((b) => [b.name, `${b.name} · ${b.bus_type || ''}`]), { onChange: (v) => (form.bus = v), width: '260px' }),
+    btn('⚙ buses', toSettings, { title: 'add or change buses in the bus adapter settings' }));
 }
 const addRemote = () => remoteDialog();
 async function deleteRemote(t) {

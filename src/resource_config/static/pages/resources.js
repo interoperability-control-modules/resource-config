@@ -1,8 +1,9 @@
 // Resources, the home page: the clade tree, the canonical card (R1 stacked / R3 tabs), the alias card (R2), Add alias.
 import { api } from '../api.js';
-import { h, uai, dot, hollow, tag, kind, note, btn, mb, card, section, kv, steps, meter, dialog, toast, input, select, radios, checkbox, info, labelled, segmentsInput } from '../ui.js';
+import { h, uai, dot, hollow, tag, kind, note, btn, mb, card, section, kv, steps, meter, dialog, toast, input, select, radios, checkbox, info, labelled, segmentsInput, key } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, healthCard, checksCard, consumersCard, updateServiceConfig, formatOptions, deleteDialog, dependentsOf, chainReport } from './common.js';
+import { busChoice } from './bridges.js';
 
 export const title = 'Resources';
 export const railBadges = (s) => [h('span', { class: 'pill n' }, String(s.model.resources.canonical.length))];
@@ -65,7 +66,7 @@ function tree(canonical, aliases, selected) {
       }
     }
   }
-  el.append(t2, h('div', { class: 'legend' }, h('span', {}, dot(), ' canonical'), h('span', {}, hollow(), ' alias')),
+  el.append(t2, key([dot(), ' canonical resource'], [hollow(), ' alias of a resource']),
     h('div', { class: 'bar' }, btn('+ Resource', addResource), btn('+ Alias', () => selected && addAlias(canonical.find((c) => c.topic === selected || c.aliases.includes(selected))))));
   return el;
 }
@@ -154,7 +155,10 @@ function deliveryText(d) {
 function renderAlias(main, ctx, a, c) {
   const resolveBox = h('div', {}, note('resolving…'));
   api.resolve(a.uai, a.format, a.deliveries.some((d) => d.kind === 'device') ? 'write' : 'read').then((r) => {
-    resolveBox.replaceChildren(steps(r.path || [], Object.fromEntries((r.path || []).map((f) => [f, HUBS.includes(f) ? 'hub' : f === (r.path || [])[0] ? 'source format' : f === a.format ? 'this alias' : 'bundled']))),
+    const path = r.path || [];
+    const hops = path.slice(1).map((out, i) => h('a', { class: 'mono', onClick: () => navigate('transforms', { input: path[i], output: out }) }, `${path[i]} → ${out}`));
+    resolveBox.replaceChildren(steps(path, Object.fromEntries(path.map((f) => [f, HUBS.includes(f) ? 'hub' : f === path[0] ? 'source format' : f === a.format ? 'this alias' : 'bundled']))),
+      hops.length ? h('div', { class: 'row', style: { margin: '6px 0 2px', gap: '6px 14px' } }, note('transforms on the way:'), ...hops) : null,
       h('div', { class: 'tiles' },
         h('div', { class: 'tile' }, h('h6', {}, 'Retention'), h('div', { class: 'big' }, r.retention != null ? `${Math.round(r.retention * 100)} %` : '—'), meter(r.retention), note(`${(r.path || []).length ? (r.path || []).length - 1 : 0} hops`), h('a', { class: 'rep', onClick: () => chainReport((r.path || [])[0] || a.format, (r.path || []).slice(-1)[0] || a.format) }, 'per hop and per field ▸')),
         h('div', { class: 'tile' }, h('h6', {}, 'Formats'), h('div', {}, `${r.data_format || '?'} → ${r.target_format || a.format}`), note('as the service resolves this alias')),
@@ -171,7 +175,7 @@ function renderAlias(main, ctx, a, c) {
     section('Canonical resource', c ? h('div', { class: 'subcard' }, dot(), uai(c.uai, { box: false, onClick: () => navigate('resources', { uai: c.topic }) }), kind('canonical'), note(`${c.format} · ${c.source && c.source.kind === 'device' ? 'device ' + c.source.device : c.owner}`), h('span', { class: 'sp' }), btn('Open ▸', () => navigate('resources', { uai: c.topic })))
       : h('div', { class: 'warn' }, `dangling: references ${a.references.join('/')}, which is not a canonical resource`), { note: 'what this is a form of' }),
     section('Delivered to', deliveries, { note: `${a.deliveries.length} · what carries this form; several may share one alias`, actions: [btn('+ Delivery', () => addDelivery(a, c))] }),
-    section('How this resolves', resolveBox, { note: a.deliveries.some((d) => d.kind === 'device') ? 'write' : 'read', actions: [btn('Chain report ▸', () => chainReport(a.deliveries.some((d) => d.kind === 'device') ? a.format : (c ? c.format : a.format), a.deliveries.some((d) => d.kind === 'device') ? (c ? c.format : a.format) : a.format)), btn('Open transform ▸', () => navigate('transforms', { input: c ? c.format : a.format, output: a.format }))] }),
+    section('How this resolves', resolveBox, { note: a.deliveries.some((d) => d.kind === 'device') ? 'write' : 'read', actions: [btn('Chain report ▸', () => chainReport(a.deliveries.some((d) => d.kind === 'device') ? a.format : (c ? c.format : a.format), a.deliveries.some((d) => d.kind === 'device') ? (c ? c.format : a.format) : a.format))] }),
     section('Static parameters', params.length ? paramTable : note('the chain references none'), { note: 'alias values override the canonical\'s' }),
   ];
   main.append(card({ title: uai(a.uai, { box: false }), badge: kind('alias', true), boxes: [c ? h('span', { class: 'mb' }, 'of ', h('a', { onClick: () => navigate('resources', { uai: c.topic }) }, c.uai.join(' / '))) : null, mb('format', a.format)],
@@ -243,35 +247,101 @@ const addResource = () => resourceDialog();
 // Add or edit an alias: format, encoding, edition and, when adding, zero or more deliveries. An alias alone is saved
 // at once; with a delivery the entries of several agents form one pending set.
 function aliasDialog(c, existing = null) {
+  let closeAlias = () => {};
   if (!c && !existing) return toast('select a canonical resource first', 'err');
   const form = { uai: existing ? [...existing.uai] : [], format: existing ? existing.format || '' : '', encoding: existing ? existing.encoding || 'json' : 'json', edition: existing ? existing.edition || '' : '',
-    parameters_text: '', delivery: 'none', bus: (state.model.buses[0] || {}).name || '', direction: 'outbound', device: '' };
+    parameters_text: '', delivery: 'none', bus: (state.model.buses[0] || {}).name || '', direction: 'outbound', device: '', bridge: true, points: '' };
   const parametersOf = () => { const t = (form.parameters_text || '').trim(); if (!t) return null; const v = JSON.parse(t); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('parameters must be a JSON object'); return v; };
   const chain = h('div', { class: 'note' }, 'choose a format to check the chain');
   const checkChain = async () => { if (!form.format || !c) return; chain.textContent = 'checking…'; try { const r = await api.resolve(c.uai, form.format, form.delivery === 'device' ? 'write' : 'read'); chain.replaceChildren(steps(r.path || []), note(`retention ${r.retention != null ? Math.round(r.retention * 100) + ' %' : '—'}`)); } catch (e) { chain.replaceChildren(h('span', { class: 'warn' }, `no chain: ${e.message} `), btn('Create transform ▸', () => navigate('transforms', { input: c.format, output: form.format }))); } };
   const deliveryFields = h('div', { class: 'grid kv1', style: { marginTop: '8px' } });
   const renderDelivery = () => { deliveryFields.replaceChildren();
-    if (form.delivery === 'remote_topic') deliveryFields.append(labelled('Bus', 'The bus adapter connection that carries the topic.'), select(form.bus, state.model.buses.map((b) => [b.name, `${b.name} · ${b.bus_type || ''}`]), { onChange: (v) => (form.bus = v), width: '260px' }),
-      labelled('Direction', 'Outbound publishes the alias to the remote bus; inbound relays what the remote publishes.'), radios('dir', form.direction, [['outbound', 'outbound', 'local → remote'], ['inbound', 'inbound', 'remote → local']], (v) => (form.direction = v)));
+    if (form.delivery === 'remote_topic') {
+      deliveryFields.append(labelled('Bus', 'The bus adapter connection that carries the topic.'), busChoice(form, () => closeAlias()),
+        labelled('Direction', 'Outbound publishes the alias to the remote bus; inbound relays what the remote publishes.'), radios('dir', form.direction, [['outbound', 'outbound', 'local → remote'], ['inbound', 'inbound', 'remote → local']], (v) => { form.direction = v; renderDelivery(); }));
+      // The adapter relays a local bus topic; for a resource that comes from a device, the only thing that puts the alias
+      // on the local bus (outbound) or carries it into the device (inbound) is a Resource Bridge. It is part of the
+      // delivery unless another agent publishes the alias itself.
+      if (c && c.source && c.source.kind === 'device') {
+        const outbound = form.direction === 'outbound';
+        deliveryFields.append(labelled('Bridge', outbound ? 'The Resource Bridge that publishes this alias on the local bus from the device\'s resource, so the adapter has something to relay. Leave off only when another agent publishes the alias itself.'
+          : 'The Resource Bridge that writes what arrives on this topic into the device. Leave off only when another agent consumes the alias itself.'),
+          h('label', { class: 'chk' }, checkbox(form.bridge, (v) => { form.bridge = v; renderDelivery(); }), ' ', outbound ? `publish it from device ${c.source.device}` : `write it to device ${c.source.device}`));
+        if (form.bridge && !outbound) deliveryFields.append(labelled('Points', 'Only these points of the incoming message are written (comma-separated point names); empty writes every point the chain maps. A control usually names just the setpoint and its enable, so the rest of the device is not overwritten.'),
+          input(form.points, { placeholder: 'empty: all points', width: '100%', mono: true, onChange: (v) => (form.points = v) }));
+      }
+    }
     if (form.delivery === 'device') deliveryFields.append(labelled('Device', 'The device the Resource Bridge writes the alias to.'), select(form.device, state.model.devices.map((d) => [d.topic, d.topic]), { blank: 'choose…', onChange: (v) => (form.device = v), width: '320px' }));
     if (form.delivery === 'local_topic') deliveryFields.append(h('span', { class: 'k' }, 'Local topic'), note('a Resource Bridge bus end publishes the alias on its UAI; any agent may subscribe'));
     checkChain(); };
-  const formatSelect = select(form.format, formatOptions().filter((f) => !c || f !== c.format).map((f) => [f, f]), { blank: 'choose…', onChange: (v) => { form.format = v; checkChain(); } });
+  // An OpenFMB alias is published on openfmb/<module>/<Profile>/<mRID>, and its message header carries the same mRID as
+  // parameters.mrid. The format knows its module and profile (proto), so the UAI prefix is filled in from the format
+  // and the mRID is typed (or generated) once and goes to both places.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const protoOf = (name) => { const f = (state.model.formats || []).find((x) => x.name === name); const p = f && f.proto; return p && p.includes('.') ? ['openfmb', ...p.split('.', 2)] : null; };
+  const parametersInput = input(existing && existing.parameters && Object.keys(existing.parameters).length ? JSON.stringify(existing.parameters) : '', { placeholder: '{"mrid": "7d1a2b3c-0000-4000-8000-000000000011"}', width: '100%', mono: true, onChange: (v) => (form.parameters_text = v) });
+  form.parameters_text = parametersInput.value;
+  const uaiBox = h('span', {});
+  const renderUai = () => uaiBox.replaceChildren(segmentsInput(form.uai, { onChange: (v) => { form.uai = v; const last = v[v.length - 1]; if (protoOf(form.format) && last && UUID.test(last) && mridInput.value !== last) { mridInput.value = last; applyMrid(last, false); } } }));
+  const applyMrid = (value, toUai = true) => {
+    value = (value || '').trim();
+    if (toUai) {
+      const prefix = protoOf(form.format);
+      const segments = form.uai.length ? [...form.uai] : (prefix ? [...prefix] : []);
+      if (segments.length && UUID.test(segments[segments.length - 1])) segments.pop();
+      if (value) segments.push(value);
+      form.uai = segments; renderUai();
+    }
+    let params = {};
+    try { params = parametersOf() || {}; } catch { params = {}; }
+    if (value) params.mrid = value; else delete params.mrid;
+    form.parameters_text = Object.keys(params).length ? JSON.stringify(params) : '';
+    parametersInput.value = form.parameters_text;
+  };
+  // The mRID identifies the device, so every OpenFMB alias of one canonical carries the same one: the canonical's own
+  // parameter when it has it, else what its existing aliases use. A new alias starts from that; a fresh mRID is for a
+  // device that has none yet.
+  const deviceMrid = () => {
+    if (!c) return '';
+    if (c.parameters && c.parameters.mrid) return String(c.parameters.mrid);
+    for (const a of (state.model.resources.aliases || []).filter((x) => c.aliases && c.aliases.includes(x.topic))) {
+      if (a.parameters && a.parameters.mrid) return String(a.parameters.mrid);
+      const last = a.uai && a.uai[a.uai.length - 1];
+      if (last && UUID.test(last)) return last;
+    }
+    return '';
+  };
+  const knownMrid = deviceMrid();
+  const existingMrid = (existing && existing.parameters && existing.parameters.mrid) || (form.uai.length && UUID.test(form.uai[form.uai.length - 1]) ? form.uai[form.uai.length - 1] : '') || knownMrid;
+  if (!existing && knownMrid) form.mrid_from_device = true;
+  const mridInput = input(existingMrid, { mono: true, width: '340px', placeholder: 'device mRID, a UUID', onChange: (v) => applyMrid(v) });
+  const mridRow = h('span', { class: 'row' }, mridInput, btn('new mRID', () => { mridInput.value = crypto.randomUUID(); applyMrid(mridInput.value); }),
+    knownMrid && !existing ? note(`the device's mRID, as its other alias${c && c.aliases && c.aliases.length === 1 ? '' : 'es'} use it; a new one would present this as another device`) : null);
+  const mridLabel = labelled('mRID', 'The device\'s identity in OpenFMB: a UUID assigned once to this device (new mRID), or one it already has. It is the last segment of the topic and the identifiedObject.mRID of every message header; both are set from here.');
+  const showMrid = () => { const on = !!protoOf(form.format); mridLabel.classList.toggle('hidden', !on); mridRow.classList.toggle('hidden', !on); };
+  const formatSelect = select(form.format, formatOptions().filter((f) => !c || f !== c.format).map((f) => [f, f]), { blank: 'choose…', onChange: (v) => {
+    form.format = v; const prefix = protoOf(v);
+    if (prefix && !mridInput.value.trim() && knownMrid) mridInput.value = knownMrid;
+    if (prefix && (!form.uai.length || form.uai[0] === 'openfmb')) { form.uai = [...prefix, ...(mridInput.value.trim() ? [mridInput.value.trim()] : [])]; renderUai(); }
+    if (prefix && mridInput.value.trim()) applyMrid(mridInput.value, false);          // parameters.mrid follows
+    showMrid(); checkChain(); } });
+  renderUai(); showMrid();
   const body = h('div', {},
     h('div', { class: 'grid kv1' },
       h('span', { class: 'k' }, 'Of'), c ? uai(c.uai) : h('span', { class: 'warn' }, `${existing.references.join(' / ')} (not a canonical resource)`),
-      labelled('UAI', 'The segments the alias is published and resolved under. Type / or press Tab to start the next segment.'), segmentsInput(form.uai, { onChange: (v) => (form.uai = v) }),
-      labelled('Format', 'The format this form of the resource is in; the service converts from the canonical\'s format.'), formatSelect,
+      labelled('Format', 'The format this form of the resource is in; the service converts from the canonical\'s format. An OpenFMB profile fills the UAI in.'), formatSelect,
+      mridLabel, mridRow,
+      labelled('UAI', 'The segments the alias is published and resolved under. Type / or press Tab to start the next segment.'), uaiBox,
       labelled('Encoding · edition', 'The wire encoding its topic carries and, for protobuf, the edition of the standard.'), h('div', { class: 'row' }, select(form.encoding, [['json', 'json'], ['protobuf', 'protobuf']], { onChange: (v) => (form.encoding = v), width: '140px' }), input(form.edition, { placeholder: defaultEdition() ? `edition, default ${defaultEdition()}` : 'edition, e.g. 2.2', width: '140px', onChange: (v) => (form.edition = v) })),
       h('span', { class: 'k' }, 'Static parameters'), note(`${Object.keys((c && c.parameters) || {}).join(', ') || 'none'} inherited from the canonical`),
-      labelled('Parameters of this alias', 'JSON object of values transform expressions reach with param(\'name\'), merged over the canonical\'s; an OpenFMB alias needs {"mrid": "<device mRID>"} for its message header.'),
-      input(existing && existing.parameters && Object.keys(existing.parameters).length ? JSON.stringify(existing.parameters) : '', { placeholder: '{"mrid": "7d1a2b3c-0000-4000-8000-000000000011"}', width: '100%', mono: true, onChange: (v) => (form.parameters_text = v) })),
+      labelled('Parameters of this alias', 'JSON object of values transform expressions reach with param(\'name\'), merged over the canonical\'s. An OpenFMB alias carries {"mrid": ...} for its message header, filled in from the mRID above.'),
+      parametersInput),
     existing ? note('Deliveries of this alias are listed on its card and edited on the Bridges tab.') : [h('h3', { style: { marginTop: '14px' } }, 'Delivery'),
       radios('delivery', 'none', [['none', 'none', 'the alias only; library clients resolve it themselves'], ['remote_topic', 'a remote topic on a bus'], ['local_topic', 'a local bus topic'], ['device', 'a device, whatever its role']], (v) => { form.delivery = v; renderDelivery(); }),
       deliveryFields],
     c ? h('fieldset', {}, h('legend', {}, 'Chain check'), chain) : null);
   if (existing) checkChain();
-  dialog({ title: existing ? `Edit alias ${existing.uai.join(' / ')}` : `Add an alias of ${c.uai.join(' / ')}`, width: 820, body, actions: [{ label: 'Cancel', onClick: (close) => close() }, { label: 'Save', primary: true, onClick: async (close) => {
+  closeAlias = dialog({ title: existing ? `Edit alias ${existing.uai.join(' / ')}` : `Add an alias of ${c.uai.join(' / ')}`, width: 820, body, actions: [{ label: 'Cancel', onClick: (close) => close() }, { label: 'Save', primary: true, onClick: async (close) => {
     if (!form.uai.length || !form.format) return toast('UAI and format are required', 'err');
     const topic = form.uai.join('/');
     try {
@@ -284,7 +354,7 @@ function aliasDialog(c, existing = null) {
       }
       const entries = await aliasEntries(c, form);
       if (entries.length === 1) { await api.putEntry('platform.presentation', 'config', { type: 'json', data: entries[0].data }); close(); toast('saved', 'ok'); await refreshModel(false); navigate('resources', { alias: topic }); }
-      else { await api.addPending(entries); close(); toast(`${entries.length} entries added to Pending changes · apply them there`, 'ok'); await refreshModel(false); }
+      else { await api.addPending(entries); close(); toast(`${entries.length} entries staged in Pending changes: apply them there to write the alias and its delivery`, 'ok'); await refreshModel(false); navigate('pending'); }
     } catch (e) { toast(e.message, 'err'); } } }] });
 }
 const addAlias = (c) => aliasDialog(c);
@@ -296,6 +366,11 @@ async function aliasEntries(c, form) {
   if (form.edition) resource.edition = form.edition;
   if (form.parameters_text && form.parameters_text.trim()) resource.parameters = JSON.parse(form.parameters_text);
   data.mappings.push({ uai: aliasUai, resource_type: 'alias', resource });
+  const mrid = resource.parameters && resource.parameters.mrid;
+  if (mrid) {   // the device's identity, recorded once on its canonical resource so every alias of it inherits the same mRID
+    const canonical = data.mappings.find((m) => m.resource_type === 'canonical' && topicOf(m.uai) === c.topic);
+    if (canonical && !(canonical.resource.parameters || {}).mrid) canonical.resource.parameters = { ...(canonical.resource.parameters || {}), mrid };
+  }
   const entries = [{ identity: 'platform.presentation', name: 'config', type: 'json', data, summary: `alias ${topic} (${form.format}, ${form.encoding}${form.edition ? ' ' + form.edition : ''})` }];
   if (form.delivery === 'remote_topic') {
     const bus = await api.entry('platform.bus_adapter', 'config').catch(() => ({ data: { adapters: [] } }));
@@ -305,6 +380,16 @@ async function aliasEntries(c, form) {
     const key = form.direction === 'outbound' ? 'local_subscriptions' : 'remote_subscriptions';
     adapter[key] = [...new Set([...(adapter[key] || []), topic])];
     entries.push({ identity: 'platform.bus_adapter', name: 'config', type: 'json', data: cfg, summary: `${form.direction} remote topic ${topic} on ${form.bus}` });
+    if (form.bridge && c.source && c.source.kind === 'device') {
+      const bridge = await api.entry('platform.resource_bridge', 'config').catch(() => ({ data: { bridges: [] } }));
+      const bcfg = { ...(bridge.data || {}) }; bcfg.bridges = [...(bcfg.bridges || [])];
+      const raw = form.direction === 'outbound' ? { source: c.uai, target: { uai: aliasUai, bus: true } } : { source: { uai: aliasUai, bus: true }, target: c.uai };
+      const points = form.points.split(',').map((x) => x.trim()).filter(Boolean);
+      if (points.length) raw.points = points;
+      bcfg.bridges.push(raw);
+      entries.push({ identity: 'platform.resource_bridge', name: 'config', type: 'json', data: bcfg,
+        summary: form.direction === 'outbound' ? `bridge publishing ${topic} from device ${c.source.device}` : `bridge writing ${topic} to device ${c.source.device}${points.length ? ` (${points.join(', ')})` : ''}` });
+    }
   }
   if (form.delivery === 'local_topic' || form.delivery === 'device') {
     const bridge = await api.entry('platform.resource_bridge', 'config').catch(() => ({ data: { bridges: [] } }));

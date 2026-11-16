@@ -16,7 +16,7 @@ PLATFORM = 'site1'
 DEVICE = {'driver_type': 'modbus', 'driver_role': 'client', 'registry_config': 'config://registry_configs/sunspec_client.csv',
           'interval': 2, 'publish_depth_first_multi': True,
           'driver_config': {'device_address': '127.0.0.1', 'port': 15020, 'unit_id': 1, 'transport_protocol': 'tcp'}}
-REGISTRY = 'Point Name,Address,Data Type,Table,Writable,Data Source,Units\n701_W,40084,int16,holding,FALSE,short_poll,W\n701_W_SF,40092,sunssf,holding,FALSE,poll_once,\n'
+REGISTRY = 'Point Name,Address,Data Type,Table,Writable,Data Source,Units,Transform\n701_W,40084,int16,holding,FALSE,short_poll,W,sunssf(701_W_SF)\n701_W_SF,40092,sunssf,holding,FALSE,poll_once,,\n701_Hz,40094,uint16,holding,FALSE,short_poll,Hz,"transform(sunssf(701_Hz_SF), round(2))"\n'
 SERVICE = {'mappings': [
     {'uai': ['matrix', 'SunSpec', 'client'], 'resource_type': 'canonical',
      'resource': {'data_format': 'sunspec_client', 'owner': 'platform.driver', 'publication_topic': 'devices/matrix/SunSpec/client/multi',
@@ -27,7 +27,7 @@ SERVICE = {'mappings': [
      'resource': {'data_format': 'openfmb.solar.control', 'owner': 'platform.driver', 'references': ['matrix', 'SunSpec', 'client'], 'encoding': 'protobuf', 'edition': '2.2'}},
     {'uai': ['matrix', 'DNP3', 'served'], 'resource_type': 'canonical',
      'resource': {'data_format': 'dnp3_served', 'owner': 'platform.driver', 'publication_topic': 'devices/matrix/DNP3/served/all', 'rpc_topic': 'devices/matrix/DNP3/served'}},
-], 'formats': {'sunspec_client': {'hub': False, 'scaling': 'transform', 'fields': ['701_W', '701_W_SF']},
+], 'formats': {'sunspec_client': {'hub': False, 'scaling': 'service', 'fields': ['701_W', '701_W_SF']},
                'dnp3_served': {'hub': False, 'fields': ['AI_1']}},
     'transforms': [{'input_format': 'sunspec_client', 'output_format': 'sunspec', 'pattern': {'#': 'transform(device_values())'}}]}
 BRIDGE = {'bridges': [
@@ -43,9 +43,11 @@ def initial_store() -> dict[str, dict[str, tuple[str, str]]]:
     return {
         'platform.driver': {'devices/matrix/SunSpec/client': ('json', json.dumps(DEVICE)),
                             'registry_configs/sunspec_client.csv': ('csv', REGISTRY),
+                            'devices/matrix/SEP2/client': ('json', json.dumps({'driver_type': 'ieee2030_5', 'driver_config': {'driver_type': 'ieee2030_5', 'driver_role': 'client', 'server_url': 'https://127.0.0.1:7443'},
+                                                                                'registry_config': 'config://registry_configs/dnp3_served.csv'})),
                             'devices/matrix/DNP3/served': ('json', json.dumps({'driver_type': 'dnp3', 'driver_role': 'outstation', 'publish_depth_first_all': True,
                                                                                 'registry_config': 'config://registry_configs/dnp3_served.csv'})),
-                            'registry_configs/dnp3_served.csv': ('csv', 'Point Name,Index,Data Source\nAI_1,1,server\n')},
+                            'registry_configs/dnp3_served.csv': ('csv', 'Volttron Point Name,Index,Data Source\nAI_1,1,server\n')},
         'platform.presentation': {'config': ('json', json.dumps(SERVICE))},
         'platform.resource_bridge': {'config': ('json', json.dumps(BRIDGE))},
         'platform.bus_adapter': {'config': ('json', json.dumps(BUS))},
@@ -126,7 +128,9 @@ def make_fake_vui() -> FastAPI:
     @app.get(f'/vui/platforms/{PLATFORM}/agents/-/health')
     async def health(request: Request, authorization: str | None = Header(default=None)):
         check(authorization)
-        return {i: {'status': 'GOOD', 'context': 'polling'} for i in selection(request) if i == 'platform.driver'}
+        # the real health service: one record per agent that heartbeats, 'message' carrying the status it set
+        return {i: {'connected': '2026-11-14T19:06:14.911180', 'peer': i, 'service_agent': False, 'last_heartbeat': '2026-11-14T19:10:14.909617', 'message': 'GOOD'}
+                for i in selection(request) if i in app.state.agents and app.state.agents[i]['running'] and i not in ('platform.resource_bridge', 'platform.driver')}   # the driver sends no heartbeat
 
     @app.api_route(f'/vui/platforms/{PLATFORM}/agents/{{identity}}/running', methods=['GET', 'PUT', 'DELETE'])
     async def running(identity: str, request: Request, authorization: str | None = Header(default=None)):
@@ -209,6 +213,22 @@ def make_fake_vui() -> FastAPI:
         check(authorization)
         body = await request.json()
         app.state.rpc_calls.append((identity, method, body))
+        if identity == 'platform.presentation' and method in ('driver_health', 'driver_status'):
+            method = {'driver_health': 'health', 'driver_status': 'status'}[method]    # the service relays the driver's health() and status()
+            app.state.health_calls = getattr(app.state, 'health_calls', 0) + 1           # a live device: every reading shows another poll
+            report = {'devices/matrix/SunSpec/client': {'status': 'GOOD', 'polls': 120 + app.state.health_calls, 'poll_failures': 2, 'consecutive_failures': 0, 'last_success': '2026-11-14T19:10:00',
+                                                        'last_failure': '2026-11-14T18:50:00', 'last_error': None, 'last_poll_duration': 0.012, 'point_errors': {}, 'writes': 3, 'write_failures': 0,
+                                                        'last_write_error': None, 'events': [], 'remote': "('tcp', '127.0.0.1', '15020', '1')", 'devices': ['devices/matrix/SunSpec/client'],
+                                                        'protocol': {'protocol': 'modbus', 'transport': 'tcp', 'device_address': '127.0.0.1', 'unit_id': 1}},
+                      'devices/matrix/DNP3/served': {'status': 'BAD', 'polls': 40, 'poll_failures': 40, 'consecutive_failures': 40, 'last_success': None, 'last_failure': '2026-11-14T19:10:05',
+                                                     'last_error': 'no master connected', 'last_poll_duration': None,
+                                                     'point_errors': {'devices/matrix/DNP3/served/AI_1': 'offline', 'devices/matrix/DNP3/other/AI_7': 'offline'},   # the second belongs to another device on this remote
+                                                     'writes': 0, 'write_failures': 0,
+                                                     'last_write_error': None, 'events': [{'time': '2026-11-14T19:10:05', 'event': 'poll failed: no master connected'}], 'remote': "('dnp3', '127.0.0.1', '20001')",
+                                                     'devices': ['devices/matrix/DNP3/served', 'devices/matrix/DNP3/other'], 'protocol': None}}
+            if method == 'health':
+                return report
+            return {'devices/matrix/SunSpec/client/701_W': {'active': True, 'last_value': 4000, 'last_updated': '2026-11-14T19:10:00', 'stale': False, 'error': None}}
         if identity in ('config.store', 'platform.driver', 'platform.web', 'platform.auth'):
             raise HTTPException(403, {'error': 'refused by the rpc proxy policy'})
         if method == 'resolve':
@@ -224,7 +244,9 @@ def make_fake_vui() -> FastAPI:
                     'unmapped_targets': [{'target': 'readingMMXU.Hz.mag', 'lost_at': '61850 → openfmb.solar'}]}
         if method == 'list_formats':
             return {'61850': {'hub': True, 'declared': False, 'proto': None, 'scaling': None, 'universe': 400, 'edges_out': ['sunspec'], 'edges_in': ['sunspec']},
-                    'sunspec_client': {'hub': False, 'declared': True, 'proto': None, 'scaling': 'transform', 'universe': 2, 'edges_out': ['sunspec'], 'edges_in': []}}
+                    'sunspec_client': {'hub': False, 'declared': True, 'proto': None, 'scaling': 'service', 'universe': 2, 'edges_out': ['sunspec'], 'edges_in': []},
+                    'openfmb.solar.reading': {'hub': False, 'declared': False, 'proto': 'solarmodule.SolarReadingProfile', 'scaling': None, 'universe': 40, 'edges_out': [], 'edges_in': ['openfmb.solar']},
+                    'openfmb.solar.control': {'hub': False, 'declared': False, 'proto': 'solarmodule.SolarControlProfile', 'scaling': None, 'universe': 30, 'edges_out': ['openfmb.solar'], 'edges_in': []}}
         if method == 'list_transforms':
             return [{'input': 'sunspec', 'output': '61850', 'origin': 'bundled', 'retention': 0.7, 'lossiness_override': None, 'fields': 87, 'unmapped_targets': 3},
                     {'input': 'sunspec_client', 'output': 'sunspec', 'origin': 'local', 'retention': 0.93, 'lossiness_override': None, 'fields': 2, 'unmapped_targets': 0}]

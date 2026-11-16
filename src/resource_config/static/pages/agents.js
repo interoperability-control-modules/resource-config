@@ -1,6 +1,6 @@
 // Agents: identity, package, lifecycle, the configuration form where a schema exists, State on the right.
 import { api } from '../api.js';
-import { h, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, toast } from '../ui.js';
+import { packageLabel, h, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, toast, ago } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, checksCard, configEditor, serviceSummary, SCHEMA_OF_TYPE } from './common.js';
 
@@ -58,14 +58,43 @@ function renderAgent(main, ctx, a, editing) {
     : a.type === 'bus adapter' ? section('Remote topics', note(`${state.model.remote_topics.length} on ${state.model.buses.length} bus${state.model.buses.length === 1 ? '' : 'es'}`), { actions: [btn('Open Bridges ▸', () => navigate('bridges'))] }) : null;
   const lifecycle = a.hidden ? [] : [btn('Stop', () => act(a, 'stop')), btn('Restart', () => act(a, 'restart')), btn(a.enabled ? 'Disable' : 'Enable', () => act(a, a.enabled ? 'disable' : 'enable'))];
   if (!a.hidden && !a.running) lifecycle[0] = btn('Start', () => act(a, 'start'), { primary: true });
-  main.append(card({ title: h('span', { style: { fontSize: '18px', fontWeight: 600 } }, a.identity), badge: kind(a.type), boxes: [mb('package', a.name || '—'), a.tag ? mb('tag', a.tag) : null],
+  main.append(card({ title: h('span', { style: { fontSize: '18px', fontWeight: 600 } }, a.identity), badge: kind(a.type), boxes: [mb('package', packageLabel(a.name)), a.tag ? mb('tag', a.tag) : null],
     buttons: [...lifecycle, editing || !hasConfig || a.type === 'service' ? null : btn('Edit', () => navigate('agents', { identity: a.identity, edit: 1 })), btn('Raw JSON', () => rawEditor(a.identity, 'config')), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }]))],
     sections: [summary, section('Configuration', configBox, { note: schema ? 'config · generated from the agent\'s model' : a.type === 'service' ? 'config · lists owned by the Resources, Formats and Transforms tabs' : 'config' })] }));
-  if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })),
-    h('div', { class: 'card' }, h('h4', {}, 'State'), ...[['status', a.hidden ? '● platform service' : a.running ? '● running' : '○ stopped', a.running || a.hidden ? 'ok' : 'warn'], ['enabled', a.enabled == null ? '—' : a.enabled ? 'yes' : 'no'], ['priority', a.priority ?? '—'], ['pid', a.pid ?? '—'], ['exit code', a.exit_code ?? '—'], ['uuid', a.uuid || '—'],
-      ['health', a.health && a.health.status ? a.health.status : '—', a.health && a.health.status === 'GOOD' ? 'ok' : '']].map(([k, v, cls]) => h('div', { class: 'hrow' }, h('span', {}, k), h('span', { class: cls || '' }, String(v))))),
+  if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })), stateCard(a),
     h('div', { class: 'card' }, h('h4', {}, 'Owns'), h('div', { class: 'uby' }, ...ownedBy(a))),
     checksCard(a.running === false && !a.hidden ? [['warn', 'not running']] : [['ok', a.hidden ? 'platform service' : 'running']]));
+}
+// The live card of this page: the agent's state and health, replaced in place on every live tick.
+function stateCard(a) {
+  return h('div', { class: 'card live' }, h('h4', {}, 'State'), ...[['status', a.hidden ? '● platform service' : a.running ? '● running' : '○ stopped', a.running || a.hidden ? 'ok' : 'warn'], ['enabled', a.enabled == null ? '—' : a.enabled ? 'yes' : 'no'], ['priority', a.priority ?? '—'], ['pid', a.pid ?? '—'], ['exit code', a.exit_code ?? '—'], ['uuid', a.uuid || '—'],
+    ...healthRows(a)].map(([k, v, cls]) => h('div', { class: 'hrow' }, h('span', {}, k), h('span', { class: cls || '' }, String(v)))));
+}
+export function renderLive({ ctx, params }) {
+  const agents = state.model.agents || [];
+  const a = agents.find((x) => x.identity === params.identity) || agents[0];
+  const old = ctx && ctx.querySelector('.card.live');
+  if (a && old) old.replaceWith(stateCard(a));
+}
+// The platform's health record of an agent is what its heartbeats carry: 'message' is the status it set (GOOD, BAD),
+// 'last_heartbeat' when it was last heard. The driver does not heartbeat; its health is summarised from its remotes.
+export function healthStatus(health) { return health ? (health.status || health.message || null) : null; }
+function healthRows(a) {
+  const status = healthStatus(a.health);
+  const rows = [];
+  if (status) {
+    rows.push(['health', status, status === 'GOOD' ? 'ok' : status === 'BAD' ? 'err' : 'warn']);
+    if (a.health.last_heartbeat) rows.push(['heartbeat', ago((Date.now() - Date.parse(a.health.last_heartbeat)) / 1000)]);
+    if (a.health.context) rows.push(['context', typeof a.health.context === 'string' ? a.health.context : JSON.stringify(a.health.context).slice(0, 80)]);
+  } else if (a.type === 'driver' && state.model.driver_health_live) {
+    const remotes = Object.values(state.model.driver_health || {});
+    const bad = remotes.filter((r) => r.status && r.status !== 'GOOD');
+    rows.push(['health', remotes.length ? (bad.length ? `${bad.length} of ${remotes.length} remotes failing` : `${remotes.length} remote${remotes.length === 1 ? '' : 's'} answering`) : 'no remotes configured', bad.length ? 'err' : 'ok']);
+    rows.push(['from', 'the driver\'s health RPC (it sends no heartbeat)']);
+  } else {
+    rows.push(['health', a.hidden ? 'platform service' : 'no heartbeat received', a.hidden ? '' : 'warn']);
+  }
+  return rows;
 }
 function ownedBy(a) {
   const m = state.model;

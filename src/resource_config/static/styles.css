@@ -55,6 +55,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}tr.add td{color:var(--
 .hol{display:inline-block;width:8px;height:8px;border-radius:50%;border:2px solid var(--ok);background:#fff;margin:4px 1px 0 0;flex:none}.hol.warn{border-color:var(--warn)}.hol.off{border-color:#bbb}
 .t2 .dot{flex:none}
 .legend{font-size:11.5px;color:var(--muted);margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+fieldset.key{font-size:11.5px;color:var(--muted);margin:10px 0 0;padding:4px 10px 8px;display:flex;gap:4px 14px;align-items:center;flex-wrap:wrap}fieldset.key legend{font-size:11px}
 .grp{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:8px 0 3px;display:flex;align-items:center;gap:6px}.grp .n{font-weight:normal;background:#e3e6ec;border-radius:8px;padding:0 6px;color:var(--ink);text-transform:none;letter-spacing:0}
 .t2.faded{opacity:.55}
 .t2.rt .clade{text-align:right}.t2.rt .canon,.t2.rt .alias{justify-content:flex-end}.t2.rt .alias{margin:0 9px 0 0;padding:3px 14px 2px 0;border-left:0;border-right:1px solid #b9bfc9}.t2.rt .alias::before{left:auto;right:0}.t2.rt .alias.last{border-right-color:transparent}.t2.rt .alias.last::after{left:auto;right:-1px;border-left:0;border-right:1px solid #b9bfc9}

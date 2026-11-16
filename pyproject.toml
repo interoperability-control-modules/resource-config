@@ -8,7 +8,8 @@ version = "0.1.0a0"
 description = "Configuration UI for the interoperability control framework: resources, devices, formats, transforms, bridges and agents on a VOLTTRON or der-control-fastlib platform."
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = ["LICENSE", "COPYRIGHT.md"]
 dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.27",
@@ -16,10 +17,11 @@ dependencies = [
     "httpx>=0.27",
     "pydantic>=2.6",
     "itsdangerous>=2.1",
+    "icm-lib-transforms>=0.1.0",   # validates registry Transform cells exactly as the driver framework reads them
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+dev = ["pytest>=7", "pytest-asyncio>=0.23", "pytest-playwright>=0.5"]   # browser tests also need: python -m playwright install chromium
 # The schema catalog reads the pydantic models of the components when they are importable; none is required.
 models = ["volttron-lib-base-driver", "volttron-platform-driver", "volttron-resource-bridge", "volttron-message-bus-adapter", "interoperability-service"]
 
@@ -35,3 +37,4 @@ resource_config = ["static/**/*", "catalog/*.json"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = ["browser: drives the UI in Chromium through Playwright (tests/browser); skip with -m 'not browser'"]

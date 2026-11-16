@@ -29,6 +29,25 @@ export async function refreshModel(refresh = false) {
   try { state.model = await api.model(refresh); state.pending = (await api.pending()).entries; render(); }
   catch (e) { if (e.status !== 401) toast(`Could not load the platform model: ${e.message}`, 'err'); }
 }
+// Live state: the agents' status and health, the driver's remote health and the Resource Bridge's statistics change
+// without any store event, so the model is re-read on a timer. Only what is live is drawn again: the status bar, the
+// pending count, and the one card a page marks as live (Health on a device, State on an agent, Activity on a bridge),
+// which the page replaces in place through renderLive. Nothing else moves, so reading, scrolling and typing are left alone.
+export const LIVE_MS = Number(localStorage.getItem('rc:live')) || 5000;
+let liveBusy = false;
+async function liveTick() {
+  if (liveBusy || document.visibilityState === 'hidden' || !state.session || !state.model) return;
+  liveBusy = true;
+  try {
+    state.model = await api.model(false); state.pending = (await api.pending()).entries;
+    renderStatus();
+    const pill = document.querySelector('#tabs .pill'); if (pill) pill.textContent = String(state.pending.length);
+    const page = PAGES[state.page];
+    if (page.renderLive && state.ctx) page.renderLive({ ctx: document.getElementById('ctx'), params: state.params, state });
+  } catch (e) { /* a missed tick; the next one tries again */ }
+  finally { liveBusy = false; }
+}
+setInterval(liveTick, LIVE_MS);
 export function setLayout(layout) { state.layout = layout; localStorage.setItem('rc:layout', layout); render(); }
 export function togglePane(which) { state[which] = !state[which]; localStorage.setItem(`rc:${which}`, state[which] ? 'open' : 'collapsed'); render(); }
 
@@ -43,7 +62,7 @@ function renderStatus() {
   const bar = clear(document.getElementById('statusbar'));
   if (!state.model) return;
   const age = state.model.refreshed ? Math.round(Date.now() / 1000 - state.model.refreshed) : null;
-  bar.append(h('span', {}, `store version ${state.model.version ?? '—'}`), h('span', {}, age === null ? 'not refreshed' : `refreshed ${age} s ago`));
+  bar.append(h('span', {}, `store version ${state.model.version ?? '—'}`), h('span', {}, age === null ? 'not refreshed' : `refreshed ${age} s ago`), h('span', { class: 'note' }, `live every ${Math.round(LIVE_MS / 1000)} s`));
   if (state.model.error) bar.append(h('span', { class: 'err' }, `platform: ${state.model.error}`));
   bar.append(h('span', { class: 'sp' }), h('a', { onClick: () => refreshModel(true) }, 'refresh now'));
 }

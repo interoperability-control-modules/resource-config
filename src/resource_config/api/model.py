@@ -59,6 +59,15 @@ async def enrich_from_platform(model: dict, session: Session, settings) -> None:
         model['transforms_live'] = False
         model.setdefault('warnings', []).append(f'list_transforms: {e}')
     try:
+        # the driver's own health: per remote, poll and write counters, the last error, failing points, protocol details.
+        # Relayed by the service: the web service's RPC proxy never forwards to the driver.
+        model['driver_health'] = await rpc(settings.presentation_identity, 'driver_health') or {}
+        model['driver_health_live'] = True
+    except PlatformError as e:
+        model['driver_health'] = {}
+        model['driver_health_live'] = False
+        model.setdefault('warnings', []).append(f'driver health: {e}')
+    try:
         stats = await rpc(settings.resource_bridge_identity, 'statistics')
         for bridge in model['bridges']:
             bridge['stats'] = stats.get(bridge['name'])

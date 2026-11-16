@@ -1,6 +1,6 @@
 // Devices: a tree over the topic segments; one device card with Device, Polling and publishing, Remote config and Registry.
 import { api } from '../api.js';
-import { h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog, segmentsInput } from '../ui.js';
+import { displayColumn, h, uai, dot, tag, kind, note, btn, mb, card, section, kv, schemaForm, input, select, radios, checkbox, toast, info, dialog, segmentsInput, ago } from '../ui.js';
 import { state, navigate, refreshModel, collapseHandle } from '../app.js';
 import { rawEditor, menu, healthCard, checksCard, consumersCard, deleteDialog, dependentsOf, removeMapping } from './common.js';
 
@@ -10,7 +10,12 @@ const DEVICE_FIELDS = ['registry_config', 'interval', 'polling_group', 'group', 
   'publish_depth_first_single', 'publish_breadth_first_single', 'all_publish_interval', 'equipment_specific_fields', 'driver_config', 'driver_type', 'driver_role', 'heart_beat_point'];
 
 export function render({ side, main, ctx, params }) {
-  if (params.discover && !document.querySelector('.dialog')) setTimeout(discoverDialog, 0);   // #/devices?discover=1 opens the dialog
+  if (params.discover && !document.querySelector('.dialog')) {   // #/devices?discover=1 opens the dialog once; the flag leaves the route so later renders do not reopen it
+    delete params.discover;
+    const rest = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    history.replaceState(null, '', `#/devices${rest ? '?' + rest : ''}`);
+    setTimeout(discoverDialog, 0);
+  }
   const devices = state.model.devices;
   const selected = devices.find((d) => d.topic === params.topic) || devices[0];
   if (side) side.append(tree(devices, selected && selected.topic));
@@ -37,13 +42,30 @@ function tree(devices, selected) {
   return el;
 }
 
+// Values this tool fills in where the driver's own default names the platform. They are written into the config
+// when the field is absent (so the device carries them, not the driver default) and shown as the field's placeholder.
+// A field is seeded only when the schema's show_when hint, if any, admits the device's role.
+const UI_DEFAULTS = { ieee2030_5: { description: 'ICM' }, bacnet: { object_name: 'ICM' } };
+export function uiDefaults(driverType, role, iface) {
+  const hints = (iface && iface.remote && iface.remote['x-hints']) || {};
+  const admits = (name) => { const w = (hints[name] || {}).show_when; return !w || Object.entries(w).every(([k, v]) => k !== 'driver_role' || (Array.isArray(v) ? v : [v]).includes(role || 'client')); };
+  return Object.fromEntries(Object.entries(UI_DEFAULTS[driverType] || {}).filter(([name]) => admits(name)));
+}
+export function seedDefaults(remote, iface) {
+  if (!remote) return remote;
+  for (const [name, value] of Object.entries(uiDefaults(remote.driver_type, remote.driver_role, iface))) if (remote[name] === undefined || remote[name] === null || remote[name] === '') remote[name] = value;
+  return remote;
+}
 function renderDevice(main, ctx, d, editing) {
   const catalog = state.catalog || { schemas: {}, interfaces: {} };
   const iface = catalog.interfaces[d.driver_type] || null;
   const deviceSchema = catalog.schemas['driver/device'] || { properties: {} };
   const draft = { config: JSON.parse(JSON.stringify(d.config || {})) };
-  draft.config.driver_config = draft.config.driver_config || {};
-  const remote = draft.config.driver_config;
+  // The driver takes the remote's settings under remote_config (what Discover and icmstack write) or driver_config
+  // (older entries); the form edits whichever the entry has, in place, and a new entry gets remote_config.
+  const remoteKey = remoteKeyOf(draft.config);
+  draft.config[remoteKey] = draft.config[remoteKey] || {};
+  const remote = draft.config[remoteKey];
   const remoteId = remoteIdOf(d);
   const groupDefaults = ((state.model.agents || []).find((a) => a.identity === 'platform.driver') || {});
   const deviceBody = kv([
@@ -57,11 +79,13 @@ function renderDevice(main, ctx, d, editing) {
     ['Publishes', h('div', {}, h('div', { class: 'mono', style: { padding: '2px 0' } }, d.publication_topic), editing ? radios('pub', d.publishes, [['all', 'all'], ['multi', 'multi']], (v) => { draft.config.publish_depth_first_all = v === 'all'; draft.config.publish_depth_first_multi = v === 'multi'; }) : note(d.publishes === 'all' ? 'all: one message per poll with every point' : 'multi: one message per poll with the points that changed')), 'The device publishes on exactly one of the two topics.'],
     ['Heartbeat point', editing ? input(d.heart_beat_point || '', { width: '200px', onChange: (v) => (remote.heart_beat_point = v || null) }) : d.heart_beat_point || '—']]);
   const remoteSection = iface ? (editing
-      ? schemaForm(iface.remote, remote, { hide: ['driver_type', 'driver_role', 'heart_beat_point', 'module', 'plugins', 'register_map'], onChange: (name, value) => { if (value === null) delete remote[name]; else remote[name] = value; } })
+      ? schemaForm(iface.remote, remote, { defaults: uiDefaults(d.driver_type, d.driver_role, iface), hide: ['driver_type', 'driver_role', 'heart_beat_point', 'module', 'plugins', 'register_map'], onChange: (name, value) => { if (value === null) delete remote[name]; else remote[name] = value; } })
       : remoteView(iface.remote, remote))
     : h('div', {}, note(`no schema for driver type "${d.driver_type}" is installed beside the UI; the raw entry is editable`), h('pre', { class: 'mono' }, JSON.stringify(remote, null, 2)));
-  const registrySection = section('Registry', registryGrid(d), { note: d.registry ? d.registry.replace('registry_configs/', '') : 'none',
-    actions: [btn('Switch registry ▾', () => switchRegistry(d)), btn('Copy as new', () => copyRegistry(d)), btn('Import', () => importRegistry(d)), btn('Export', () => exportRegistry(d))] });
+  let checksEl = checksCard(deviceChecks(d));
+  const refreshChecks = () => { const fresh = checksCard(deviceChecks(d)); checksEl.replaceWith(fresh); checksEl = fresh; };
+  const registrySection = section('Registry', registryGrid(d, refreshChecks), { note: d.registry ? d.registry.replace('registry_configs/', '') : 'none',
+    actions: [btn('Functions ▸', () => transformFunctionsDialog()), btn('Switch registry ▾', () => switchRegistry(d)), btn('Copy as new', () => copyRegistry(d)), btn('Import', () => importRegistry(d)), btn('Export', () => exportRegistry(d))] });
   const buttons = editing
     ? [btn('Save', () => saveDevice(d, draft), { primary: true }), btn('Cancel', () => navigate('devices', { topic: d.topic })), btn('Raw JSON', () => rawEditor('platform.driver', d.entry))]
     : [btn('Edit', () => navigate('devices', { topic: d.topic, edit: 1 })), btn('Raw JSON', () => rawEditor('platform.driver', d.entry)), btn('⋯', (e) => menu(e.target, [{ header: 'Layout' }, { layout: true }, { header: 'This device' },
@@ -73,14 +97,21 @@ function renderDevice(main, ctx, d, editing) {
     sections: [section('Device', deviceBody, { note: editing ? 'in edit mode' : undefined, actions: d.resource ? [btn('Resource ▸', () => navigate('resources', { uai: d.resource }))] : [note('no canonical resource publishes this device')] }),
       section('Polling and publishing', pollingBody), section(`Remote config`, remoteSection, { note: d.driver_type || '' }), registrySection,
       d.driver_role && d.driver_role !== 'client' ? section('Served state', () => h('div', {}, note('the agent-written state entry; read-only'), h('pre', { class: 'mono' }, JSON.stringify((state.model && stateEntry(d)) || {}, null, 2))), { collapsed: true, note: 'only for server roles · written by the agent' }) : null] }));
-  if (ctx) {
-    const driver = (state.model.agents || []).find((a) => a.identity === 'platform.driver');
-    const health = driver && driver.health && driver.health.context;
-    ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })),
-      healthCard([['driver', driver ? (driver.running ? '● running' : '○ stopped') : '—', driver && driver.running ? 'ok' : 'warn'], ['driver health', (driver && driver.health && driver.health.status) || '—', driver && driver.health && driver.health.status === 'GOOD' ? 'ok' : ''],
-        ['context', typeof health === 'string' ? health : health ? JSON.stringify(health).slice(0, 60) : '—'], ['points', d.registry_rows ? String(d.registry_rows.length) : '—']]),
-      deviceConsumers(d), checksCard(deviceChecks(d)));
-  }
+  if (ctx) ctx.append(h('h3', { class: 'ph' }, collapseHandle('ctx'), h('span', { class: 'sp' })), deviceHealthCard(d), deviceConsumers(d), checksEl);
+}
+// The live card of this page: the driver's state and this remote's health, replaced in place on every live tick.
+function deviceHealthCard(d) {
+  const driver = (state.model.agents || []).find((a) => a.identity === 'platform.driver');
+  const card = healthCard([['driver', driver ? (driver.running ? '● running' : '○ stopped') : '—', driver && driver.running ? 'ok' : 'warn'], ...remoteHealthRows(d),
+    ['points', d.registry_rows ? String(d.registry_rows.length) : '—']]);
+  card.classList.add('live');
+  return card;
+}
+export function renderLive({ ctx, params }) {
+  const devices = state.model.devices;
+  const d = devices.find((x) => x.topic === params.topic) || devices[0];
+  const old = ctx && ctx.querySelector('.card.live');
+  if (d && old) old.replaceWith(deviceHealthCard(d));
 }
 function remoteView(schema, remote) {
   const hints = schema['x-hints'] || {}; const props = schema.properties || {};
@@ -98,15 +129,71 @@ function remoteView(schema, remote) {
   el.append(section('Advanced', () => grid(advanced), { collapsed: true, note: `${advanced.length} fields, ${changed ? changed + ' not at their defaults' : 'all at their defaults'}` }));
   return el;
 }
-function registryGrid(d) {
+const transformChecks = new Map();      // expression text -> the library's verdict (api.validateTransforms), shared by every grid
+
+function transformColumn(columns) { return columns.find((c) => /^transform$/i.test(c.trim())); }
+
+function pointNames(rows) { return new Set(rows.map((r) => r['Point Name'] || r['Volttron Point Name'] || r.volttron_point_name || '')); }
+
+function describeTransform(check, points) {
+  if (!check) return '';
+  if (!check.ok) return check.error;
+  const parts = [`functions: ${check.functions.join(', ') || 'none (identity)'}`];
+  if (check.references.length) parts.push(`reads: ${check.references.join(', ')}`);
+  if (check.result_type) parts.push(`yields ${check.result_type}`);
+  if (!check.invertible) parts.push(`not writable through: ${check.non_invertible.join(', ')} has no inverse`);
+  if (check.defines_value) parts.push('derived point: its own value is not used');
+  const unknown = check.references.filter((r) => points && !points.has(r));
+  if (unknown.length) parts.push(`not in this registry: ${unknown.join(', ')}`);
+  return parts.join('\n');
+}
+
+function transformCellClass(check, points) {
+  if (!check) return '';
+  if (!check.ok) return 'err';
+  return check.references.some((r) => points && !points.has(r)) ? 'warn' : 'ok';
+}
+
+async function checkTransforms(texts) {
+  const pending = [...new Set(texts)].filter((t) => t && !transformChecks.has(t));
+  if (!pending.length) return;
+  try {
+    const result = await api.validateTransforms(pending);
+    for (const [text, check] of Object.entries(result)) transformChecks.set(text, check);
+  } catch (e) {
+    for (const text of pending) transformChecks.set(text, { ok: false, error: `not checked: ${e.message || e}` });
+  }
+}
+
+function registryGrid(d, onChecked) {
   const rows = d.registry_rows;
   if (!rows) return note(d.registry ? 'the registry entry is not a CSV table' : 'no registry');
   const columns = rows.length ? Object.keys(rows[0]) : [];
-  const table = h('table', { class: 'grid-table' }, h('tr', {}, ...columns.map((c) => h('th', {}, c))), ...rows.map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|point/i.test(c) ? 'mono' : '' }, r[c] ?? '')))));
+  const transform = transformColumn(columns);
+  const points = pointNames(rows);
+  const cells = [];
+  const cell = (r, c) => {
+    const td = h('td', { class: /name|point/i.test(c) ? 'mono' : c === transform ? 'mono transform' : '' }, r[c] ?? '');
+    if (c === transform && r[c]) cells.push([td, r[c]]);
+    return td;
+  };
+  const table = h('table', { class: 'grid-table' }, h('tr', {}, ...columns.map((c) => h('th', { title: c === displayColumn(c, columns) ? undefined : `${c} in the file` }, displayColumn(c, columns)))), ...rows.map((r) => h('tr', {}, ...columns.map((c) => cell(r, c)))));
+  const annotate = () => cells.forEach(([td, text]) => { const check = transformChecks.get(text); if (!check) return; td.title = describeTransform(check, points); td.classList.remove('ok', 'warn', 'err'); const cls = transformCellClass(check, points); if (cls) td.classList.add(cls); });
+  annotate();
+  if (cells.some(([, text]) => !transformChecks.has(text))) checkTransforms(cells.map(([, text]) => text)).then(() => { annotate(); if (onChecked) onChecked(); });
   const warnings = rows.filter((r) => 'Units' in r && !r.Units && !/sf$|_SF$/.test(r['Point Name'] || '')).length;
   return h('div', {}, h('div', { class: 'note', style: { margin: '-4px 0 8px' } }, `${d.registry_shared_with.length ? 'shared with ' + d.registry_shared_with.length + ' other device' + (d.registry_shared_with.length === 1 ? '' : 's') + ' · ' : ''}${rows.length} points${warnings ? ' · ' : ''}`, warnings ? h('a', { class: 'warn' }, `⚠ ${warnings} rows without units`) : null),
     h('div', { class: 'scrollbox' }, h('div', { class: 'scrollin', style: { overflow: 'auto', maxHeight: '320px' } }, table)));
 }
+async function transformFunctionsDialog() {
+  let functions;
+  try { functions = await api.transformFunctions(); } catch (e) { return toast(`functions: ${e.message || e}`, 'err'); }
+  const table = h('table', { class: 'grid-table' }, h('tr', {}, h('th', {}, 'Function'), h('th', {}, 'Also'), h('th', {}, 'Yields'), h('th', {}, 'What it does')),
+    ...functions.map((f) => h('tr', {}, h('td', { class: 'mono' }, `${f.name}${f.signature}`), h('td', { class: 'mono' }, f.aliases.join(', ')), h('td', {}, f.result_type || ''), h('td', {}, f.doc))));
+  dialog({ title: 'Transform functions', width: 900, body: h('div', {}, note('A Transform cell holds one call, or several wrapped in transform(f1(...), f2(...)). Functions over several registers (sum_of ...) define the point from other points.'),
+    h('div', { class: 'scrollbox' }, h('div', { class: 'scrollin', style: { overflow: 'auto', maxHeight: '60vh' } }, table))), actions: [{ label: 'Close', primary: true, onClick: (c) => c() }] });
+}
+
 function deviceConsumers(d) {
   const res = state.model.resources.canonical.find((c) => c.topic === d.resource);
   const el = h('div', { class: 'card' }, h('h4', {}, 'Consumers'));
@@ -120,10 +207,54 @@ function deviceConsumers(d) {
 function deviceChecks(d) {
   const checks = [[d.registry ? 'ok' : 'warn', d.registry ? 'registry exists' : 'no registry']];
   if (d.registry && !d.registry_rows) checks.push(['warn', 'the registry entry is not a CSV table']);
-  if (d.registry_rows) { const sf = d.registry_rows.filter((r) => /_SF$/.test(r['Point Name'] || '')).map((r) => r['Point Name']); const refs = d.registry_rows.map((r) => r.Transform || '').join(' '); const missing = sf.filter((s) => false); checks.push(['ok', `${sf.length} scale factors`]); }
+  if (d.registry_rows) {
+    const column = transformColumn(Object.keys(d.registry_rows[0] || {}));
+    const texts = column ? d.registry_rows.map((r) => r[column]).filter(Boolean) : [];
+    const points = pointNames(d.registry_rows);
+    const bad = texts.filter((t) => transformChecks.get(t) && !transformChecks.get(t).ok);
+    const unknown = texts.flatMap((t) => (transformChecks.get(t)?.references || []).filter((r) => !points.has(r)));
+    if (bad.length) checks.push(['err', `${bad.length} transform expression${bad.length === 1 ? '' : 's'} the library rejects`]);
+    if (unknown.length) checks.push(['warn', `transforms read points not in this registry: ${[...new Set(unknown)].join(', ')}`]);
+    if (texts.length && !bad.length && !unknown.length && texts.every((t) => transformChecks.has(t))) checks.push(['ok', `${texts.length} transform expression${texts.length === 1 ? '' : 's'} compile`]);
+  }
+  if (false) { const sf = d.registry_rows.filter((r) => /_SF$/.test(r['Point Name'] || '')).map((r) => r['Point Name']); const refs = d.registry_rows.map((r) => r.Transform || '').join(' '); const missing = sf.filter((s) => false); checks.push(['ok', `${sf.length} scale factors`]); }
   if (!d.resource) checks.push(['warn', 'no canonical resource publishes this device']);
   if (d.driver_role && d.driver_role !== 'client' && d.registry_rows && !d.registry_rows.some((r) => (r['Data Source'] || '').toLowerCase() === 'server')) checks.push(['warn', 'a server role without Data Source = server rows']);
   return checks;
+}
+// The driver's health report for this device's remote (platform.driver health()), keyed by device topic.
+function remoteHealthOf(d) {
+  const report = state.model.driver_health || {};
+  return report[`devices/${d.topic}`] || report[d.topic] || Object.values(report).find((r) => (r.devices || []).includes(`devices/${d.topic}`)) || null;
+}
+function remoteHealthRows(d) {
+  if (!state.model.driver_health_live) return [['remote health', 'not available: the driver did not answer its health RPC', 'warn']];
+  const r = remoteHealthOf(d);
+  if (!r) return [['remote health', 'not reported: the driver has not configured this device', 'warn']];
+  const when = (t) => (t ? ago((Date.now() - Date.parse(t)) / 1000) : '—');
+  // One remote (one connection) may serve several devices; the report is the remote's, the failing points are shown
+  // for this device only, and the other devices on the remote are named.
+  const mine = Object.entries(r.point_errors || {}).filter(([k]) => k.startsWith(`devices/${d.topic}/`));
+  const others = (r.devices || []).filter((x) => x !== `devices/${d.topic}`);
+  const failing = mine.length;
+  const rows = [['remote health', r.status || '—', r.status === 'GOOD' ? 'ok' : r.status === 'BAD' ? 'err' : 'warn'],
+    ['polls', `${r.polls ?? 0} · ${r.poll_failures ?? 0} failed${r.consecutive_failures ? ` · ${r.consecutive_failures} in a row` : ''}`, r.consecutive_failures ? 'err' : ''],
+    ['last success', when(r.last_success)]];
+  if (others.length) rows.push(['remote shared with', others.map((x) => x.replace(/^devices\//, '')).join(', '), 'warn']);
+  // the latest error is shown while the remote is failing; once it answers again only the time of the last failure stays
+  if (r.last_error && (r.status !== 'GOOD' || r.consecutive_failures)) rows.push(['last error', `${r.last_error} (${when(r.last_failure)})`, 'err']);
+  else if (r.last_failure) rows.push(['last failure', `${when(r.last_failure)}, recovered`]);
+  if (failing) rows.push(['failing points', `${failing}: ${mine.map(([k]) => k.split('/').pop()).slice(0, 4).join(', ')}${failing > 4 ? ' …' : ''} · ${mine[0][1].slice(0, 90)}`, 'warn']);
+  if (r.writes) rows.push(['writes', `${r.writes} · ${r.write_failures ?? 0} failed`, r.write_failures ? 'warn' : '']);
+  if (r.protocol && typeof r.protocol === 'object') {
+    // what the protocol adds: scalars as they are; a counter block (requests, successes, failures…) as one summary
+    const scalars = Object.entries(r.protocol).filter(([k, v]) => k !== 'error' && (v === null || typeof v !== 'object')).map(([k, v]) => `${k} ${v}`);
+    const counters = Object.entries(r.protocol).filter(([, v]) => v && typeof v === 'object' && 'requests' in v && v.requests)
+      .map(([k, v]) => `${k}: ${v.requests} requests, ${v.failures || 0} failed${v.reconnects ? `, ${v.reconnects} reconnects` : ''}`);
+    if (scalars.length) rows.push(['protocol', scalars.join(' · ')]);
+    for (const c of counters) rows.push(['counters', c]);
+  }
+  return rows;
 }
 function remoteIdOf(d) {
   const r = d.remote_config || {};
@@ -132,6 +263,8 @@ function remoteIdOf(d) {
   if (d.driver_type === 'ieee2030_5') return ['2030.5', r.server_url || r.host || r.bind_host || '?'];
   return [d.driver_type || '?', ...Object.values(r).filter((v) => typeof v === 'string' || typeof v === 'number').slice(0, 3).map(String)];
 }
+export const remoteKeyOf = (config) => (config && config.remote_config && typeof config.remote_config === 'object' ? 'remote_config'
+  : config && config.driver_config && typeof config.driver_config === 'object' ? 'driver_config' : 'remote_config');
 const serverWord = (type) => ({ modbus: 'slave', dnp3: 'outstation', ieee2030_5: 'server', bacnet: 'device' }[type] || 'server');
 const roleLabel = (role, type) => !role || role === 'client' || role === 'master' ? 'client (master)' : `server (${role})`;
 const prettify = (n) => n.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
@@ -143,6 +276,8 @@ async function saveDevice(d, draft) {
   try {
     const config = draft.config;
     for (const k of Object.keys(config)) if (config[k] === null || config[k] === undefined) delete config[k];
+    const remoteConfig = config[remoteKeyOf(config)];
+    if (remoteConfig) seedDefaults(remoteConfig, ((state.catalog || {}).interfaces || {})[remoteConfig.driver_type || d.driver_type]);
     if (draft.topic && draft.topic !== d.topic) {
       await api.putEntry('platform.driver', `devices/${draft.topic}`, { type: 'json', data: config });
       await api.deleteEntry('platform.driver', d.entry);
@@ -160,18 +295,40 @@ function deleteDevice(d) {
     onDelete: async () => { await api.deleteEntry('platform.driver', d.entry); toast('deleted', 'ok'); await refreshModel(false); navigate('devices'); } });
 }
 function addDevice() {
-  const form = { topic: '', driver_type: Object.keys((state.catalog || {}).interfaces || {})[0] || 'modbus', registry: '' };
+  const form = { topic: '', driver_type: Object.keys((state.catalog || {}).interfaces || {})[0] || 'modbus', source: 'file', registry: '', name: '' };
+  const existing = (state.model.registries || []).map((r) => [r.name, r.name.replace('registry_configs/', '')]);
+  const file = h('input', { type: 'file', accept: '.csv,.json,text/csv,application/json' });
+  const nameInput = input('', { mono: true, width: '100%', placeholder: 'registry_configs/<last topic segment>.csv', onChange: (v) => (form.name = v) });
+  const registryRow = h('span', {});
+  const renderRegistry = () => registryRow.replaceChildren(
+    form.source === 'existing' ? select(form.registry, existing, { blank: 'choose…', onChange: (v) => (form.registry = v), width: '100%' })
+      : form.source === 'file' ? h('div', {}, file, h('div', { style: { marginTop: '6px' } }, nameInput), note('CSV or JSON, as the driver reads it; the name it is stored under in the driver\'s store.'))
+      : note('an empty registry named after the topic, to fill in on the device\'s card'));
+  renderRegistry();
   dialog({ title: 'Add a device', body: h('div', {}, h('div', { class: 'grid kv1' },
     h('span', { class: 'k' }, 'Topic'), segmentsInput([], { separator: '/', onChange: (v) => (form.topic = v.join('/')) }),
     h('span', { class: 'k' }, 'Driver type'), select(form.driver_type, Object.keys((state.catalog || {}).interfaces || {}).map((i) => [i, i]), { onChange: (v) => (form.driver_type = v), width: '200px' }),
-    h('span', { class: 'k' }, 'Registry'), select('', (state.model.registries || []).map((r) => [r.name, r.name.replace('registry_configs/', '')]), { blank: 'new, named after the topic', onChange: (v) => (form.registry = v), width: '320px' })),
-    note('Creates the device entry (and an empty registry when none is chosen). Discover, which scans a unit and generates the registry, format and resource, is not wired to a generator yet.')),
+    h('span', { class: 'k' }, 'Registry'), radios('add-registry', form.source, [['file', 'from a file'], ...(existing.length ? [['existing', 'an existing registry']] : []), ['empty', 'empty, to fill in']], (v) => { form.source = v; renderRegistry(); }),
+    h('span', { class: 'k' }), registryRow),
+    note('Creates the device entry and its registry; the remote settings are edited next. Discover does the same from a scan of the device, with its format and resource.')),
     actions: [{ label: 'Cancel', onClick: (c) => c() }, { label: 'Create', primary: true, onClick: async (close) => {
       if (!form.topic) return toast('a topic is required', 'err');
+      const chosen = file.files && file.files[0];
+      if (form.source === 'file' && !chosen) return toast('choose a registry file', 'err');
+      if (form.source === 'existing' && !form.registry) return toast('choose a registry', 'err');
       try {
-        const registry = form.registry || `registry_configs/${form.topic.split('/').pop()}.csv`;
-        if (!form.registry) await api.putEntry('platform.driver', registry, { type: 'csv', text: 'Point Name,Address,Data Type,Writable,Data Source,Units\n' });
-        await api.putEntry('platform.driver', `devices/${form.topic}`, { type: 'json', data: { registry_config: `config://${registry}`, driver_config: { driver_type: form.driver_type, driver_role: 'client' }, driver_type: form.driver_type } });
+        const defaultName = `registry_configs/${form.topic.split('/').pop()}.csv`;
+        let registry = form.registry;
+        if (form.source === 'file') {
+          registry = form.name.trim() || defaultName;
+          if (!registry.startsWith('registry_configs/')) registry = `registry_configs/${registry}`;
+          const text = await chosen.text(); const isJson = chosen.name.endsWith('.json') || text.trim().startsWith('[');
+          await api.putEntry('platform.driver', registry, isJson ? { type: 'csv', data: JSON.parse(text) } : { type: 'csv', text });
+        } else if (form.source === 'empty') {
+          registry = defaultName;
+          await api.putEntry('platform.driver', registry, { type: 'csv', text: 'Point Name,Address,Data Type,Writable,Data Source,Units\n' });
+        }
+        await api.putEntry('platform.driver', `devices/${form.topic}`, { type: 'json', data: { registry_config: `config://${registry}`, remote_config: seedDefaults({ driver_type: form.driver_type, driver_role: 'client' }, ((state.catalog || {}).interfaces || {})[form.driver_type]), driver_type: form.driver_type } });
         close(); toast('device created', 'ok'); await refreshModel(false); navigate('devices', { topic: form.topic, edit: 1 });
       } catch (e) { toast(e.message, 'err'); } } }] });
 }
@@ -207,7 +364,8 @@ async function deleteRegistry(name) { try { await api.deleteEntry('platform.driv
 
 // Discover (design DS1/DS2): Source asks for what the generator needs; Review is read-only; the result is one pending set.
 function discoverDialog() {
-  const form = { protocol: 'sunspec', source: 'unit', host: '', port: '', unit: 1, role: 'client', scaling: 'transform', topic: '', publish: 'multi', interval: '', registry_name: '', file: null, device_format: '' };
+  const form = { protocol: 'sunspec', source: 'unit', dnp3_source: 'outstation', host: '', port: '', unit: 1, master_id: '', outstation_id: '', role: 'client', scaling: 'driver', topic: '', publish: 'multi', interval: '', registry_name: '', file: null, device_format: '',
+    cert_path: '', key_path: '', ca_path: '', pin: '' };
   const where = h('div', { class: 'grid kv1' });
   const fileInput = () => h('input', { type: 'file', accept: '.json', onChange: (e) => (form.file = e.target.files[0]) });
   const renderWhere = () => {
@@ -216,21 +374,44 @@ function discoverDialog() {
       where.append(h('span', { class: 'k' }, 'Source'), radios('disc-src', form.source, [['unit', 'a reachable unit'], ['file', 'a pysunspec2 scan file']], (v) => { form.source = v; renderWhere(); }));
       if (form.source === 'unit') where.append(
         h('span', { class: 'k' }, 'Address'), input(form.host, { mono: true, width: '220px', placeholder: '192.168.1.20', onChange: (v) => (form.host = v) }),
-        h('span', { class: 'k' }, 'Port · unit'), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.port, { num: true, width: '90px', placeholder: '502', onChange: (v) => (form.port = v) }), input(form.unit, { num: true, width: '70px', onChange: (v) => (form.unit = v) })));
+        h('span', { class: 'k' }, 'Port'), input(form.port, { num: true, width: '90px', placeholder: '502', onChange: (v) => (form.port = v) }),
+        h('span', { class: 'k' }, 'Unit id'), input(form.unit, { num: true, width: '90px', onChange: (v) => (form.unit = v) }));
       else where.append(h('span', { class: 'k' }, 'Scan file'), fileInput());
       where.append(h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (slave)']], (v) => (form.role = v)),
-        h('span', { class: 'k' }, 'Scale factors ', info("transform: the device format's transform applies the scale factors; driver: each point scales itself with scale_sf() in its Transform column.")),
-        select(form.scaling, [['transform', 'transform'], ['driver', 'driver']], { onChange: (v) => (form.scaling = v), width: '200px' }));
+        h('span', { class: 'k' }, 'Scale factors applied by: ', info("Who turns SunSpec's raw integers into engineering values with the _SF scale factors. driver: each scaled point carries sunssf(<its _SF register>) in the registry's Transform column; the driver publishes engineering values and the _SF points are not published. service: the driver publishes the raw registers and the _SF points, and the service's device-format transform scales them.")),
+        select(form.scaling, [['driver', 'driver'], ['service', 'service']], { onChange: (v) => (form.scaling = v), width: '200px' }));
     }
-    if (form.protocol === 'dnp3') where.append(
-      h('span', { class: 'k' }, 'Profile ', info('An IEEE 1815.2 device profile (JSON) from the test tool or the vendor.')), fileInput(),
-      h('span', { class: 'k' }, 'Outstation'), h('span', { style: { display: 'flex', gap: '8px' } }, input(form.host, { mono: true, width: '180px', placeholder: '127.0.0.1', onChange: (v) => (form.host = v) }), input(form.port, { num: true, width: '90px', placeholder: '20000', onChange: (v) => (form.port = v) })),
-      h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (outstation)']], (v) => (form.role = v)));
-    if (form.protocol === 'ieee2030_5') where.append(
-      h('span', { class: 'k' }, 'Device to mirror ', info('The 2030.5 point map is derived from the format of the resource another device publishes.')),
-      select('', state.model.devices.filter((d) => d.resource).map((d) => [d.topic, d.topic]), { blank: 'choose…', width: '320px', onChange: (v) => { const d = state.model.devices.find((x) => x.topic === v); const res = d && state.model.resources.canonical.find((c) => c.topic === d.resource); form.device_format = res ? res.format : ''; } }),
-      h('span', { class: 'k' }, 'Server URL'), input(form.host, { mono: true, width: '280px', placeholder: 'https://127.0.0.1:8443', onChange: (v) => (form.host = v) }),
-      h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client'], ['server', 'server']], (v) => (form.role = v)));
+    if (form.protocol === 'dnp3') {
+      // IEEE 1815.2 fixes what every index means; a device adds only which indexes it has. An integrity poll of a
+      // reachable outstation lists them; a device profile file (the test tool's JSON) does the same for one not reachable yet.
+      where.append(h('span', { class: 'k' }, 'Source'), radios('disc-dnp3-src', form.dnp3_source, [['outstation', 'a reachable outstation'], ['file', 'an IEEE 1815.2 profile file']], (v) => { form.dnp3_source = v; renderWhere(); }));
+      if (form.dnp3_source === 'file') where.append(h('span', { class: 'k' }, 'Profile ', info('An IEEE 1815.2 device profile (JSON) from the test tool or the vendor: its point list stands in for the scan.')), fileInput());
+      where.append(
+        h('span', { class: 'k' }, 'Outstation address'), input(form.host, { mono: true, width: '100%', placeholder: '127.0.0.1', onChange: (v) => (form.host = v) }),
+        h('span', { class: 'k' }, 'Port'), input(form.port, { num: true, width: '90px', placeholder: '20000', onChange: (v) => (form.port = v) }),
+        h('span', { class: 'k' }, 'Master id ', info('The DNP3 link address this platform uses as the master.')), input(form.master_id, { num: true, width: '90px', placeholder: '2', onChange: (v) => (form.master_id = v) }),
+        h('span', { class: 'k' }, 'Outstation id ', info('The DNP3 link address of the outstation.')), input(form.outstation_id, { num: true, width: '90px', placeholder: '1', onChange: (v) => (form.outstation_id = v) }),
+        h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client (master)'], ['server', 'server (outstation)']], (v) => (form.role = v)));
+    }
+    if (form.protocol === 'ieee2030_5') {
+      // The 2030.5 device in the platform is a client that represents (mirrors) a physical device towards a utility or
+      // aggregator server: it reports that device's capability, settings, status and readings and takes the server's
+      // controls for it. Its registry is derived from the format of the resource the mirrored device publishes.
+      const mirrorable = state.model.devices.filter((d) => d.resource);
+      where.append(h('span', { class: 'k' }, 'Device to mirror ', info('The 2030.5 client represents another device of this platform towards the server: it reports that device\'s capability, settings, status and readings and receives controls for it. Its registry is derived from the format of the resource that device publishes, so discover the device first.')),
+        mirrorable.length
+          ? select('', mirrorable.map((d) => [d.topic, d.topic]), { blank: 'choose…', width: '100%', onChange: (v) => { const d = state.model.devices.find((x) => x.topic === v); const res = d && state.model.resources.canonical.find((c) => c.topic === d.resource); form.device_format = res ? res.format : ''; } })
+          : note('No device publishes a resource yet. Discover the device to be represented first (the inverter, for instance); its resource\'s format decides what the 2030.5 client can report and accept.'),
+        h('span', { class: 'k' }, 'Server URL'), input(form.host, { mono: true, width: '100%', placeholder: 'https://127.0.0.1:8443', onChange: (v) => (form.host = v) }),
+        // The client's identity towards the server: a certificate the server knows (its LFDI is derived from it), its
+        // key, and the CA that signed the server's certificate. Paths on the platform host. Without them the client
+        // cannot register and every point reads "Server not registered".
+        h('span', { class: 'k' }, 'Client certificate ', info('Path, on the platform host, of the PEM certificate this client presents; the server must know it (its LFDI). In the showroom: icmstack register sep2-server --print names the files.')), input(form.cert_path, { mono: true, width: '100%', placeholder: '/path/to/client.crt', onChange: (v) => (form.cert_path = v) }),
+        h('span', { class: 'k' }, 'Client key'), input(form.key_path, { mono: true, width: '100%', placeholder: '/path/to/client.key', onChange: (v) => (form.key_path = v) }),
+        h('span', { class: 'k' }, 'CA certificate ', info('The CA that signed the server\'s certificate, so the client trusts it.')), input(form.ca_path, { mono: true, width: '100%', placeholder: '/path/to/ca.crt', onChange: (v) => (form.ca_path = v) }),
+        h('span', { class: 'k' }, 'PIN ', info('The registration PIN the server expects for this device, when it uses one.')), input(form.pin, { num: true, width: '120px', placeholder: 'none', onChange: (v) => (form.pin = v) }),
+        h('span', { class: 'k' }, 'Role'), radios('disc-role', form.role, [['client', 'client'], ['server', 'server']], (v) => (form.role = v)));
+    }
   };
   renderWhere();
   const becomes = h('div', { class: 'grid kv1' },
@@ -249,8 +430,21 @@ function discoverDialog() {
       if (form.source === 'file') { if (!form.file) return toast('choose a scan file', 'err'); options.device_json = await form.file.text(); }
       else { if (!form.host) return toast('an address is required', 'err'); options.host = form.host; options.port = Number(form.port) || 502; options.unit = Number(form.unit) || 1; }
     }
-    if (form.protocol === 'dnp3') { if (!form.file) return toast('choose a profile', 'err'); options.profile_json = await form.file.text(); if (form.host) options.outstation_ip = form.host; if (form.port) options.port = Number(form.port); }
-    if (form.protocol === 'ieee2030_5') { if (!form.device_format) return toast('choose the device to mirror', 'err'); options.device_format = form.device_format; if (form.host) options.server_url = form.host; }
+    if (form.protocol === 'dnp3') {
+      if (form.dnp3_source === 'file') { if (!form.file) return toast('choose a profile file', 'err'); options.profile_json = await form.file.text(); }
+      else if (!form.host) return toast('an outstation address is required', 'err');
+      if (form.host) options.outstation_ip = form.host;
+      if (form.port) options.port = Number(form.port);
+      if (form.master_id !== '') options.master_id = Number(form.master_id);
+      if (form.outstation_id !== '') options.outstation_id = Number(form.outstation_id);
+    }
+    if (form.protocol === 'ieee2030_5') {
+      if (!form.device_format) return toast('choose the device to mirror', 'err');
+      if (form.role === 'client' && (!form.cert_path || !form.key_path)) return toast('the client certificate and key are required: the server identifies this device by them', 'err');
+      options.device_format = form.device_format; if (form.host) options.server_url = form.host;
+      for (const k of ['cert_path', 'key_path', 'ca_path']) if (form[k]) options[k] = form[k].trim();
+      if (form.pin !== '') options.pin = Number(form.pin);
+    }
     toast('scanning…');
     try { const result = await api.discover(form.protocol, options); close(); reviewDialog(result, form); } catch (e) { toast(`discovery failed: ${e.message}`, 'err'); }
   } }] });
@@ -261,7 +455,7 @@ function reviewDialog(result, form) {
   const registry = entries.find((e) => e.type === 'csv');
   const rows = (registry && registry.data) || [];
   const columns = rows.length ? Object.keys(rows[0]) : [];
-  const grid = h('table', {}, h('tr', {}, ...columns.map((c) => h('th', {}, c))), ...rows.slice(0, 300).map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|address|index/i.test(c) ? 'mono' : '' }, String(r[c] ?? ''))))));
+  const grid = h('table', {}, h('tr', {}, ...columns.map((c) => h('th', { title: c === displayColumn(c, columns) ? undefined : `${c} in the file` }, displayColumn(c, columns)))), ...rows.slice(0, 300).map((r) => h('tr', {}, ...columns.map((c) => h('td', { class: /name|address|index/i.test(c) ? 'mono' : '' }, String(r[c] ?? ''))))));
   const identity = Object.entries(result.identity || {}).map(([k, v]) => `${k} ${v}`).join(' · ');
   const summary = h('div', { class: 'note', style: { marginBottom: '8px' } }, identity ? `${identity} · ` : '', result.models ? `models ${result.models.join(', ')} · ` : '', `${result.points ?? rows.length} points`);
   if (result.remote_id) summary.append(' · device UAI ', uai(result.remote_id, { size: 'small' }));
@@ -274,6 +468,11 @@ function reviewDialog(result, form) {
     h('div', { style: { overflow: 'auto', maxHeight: '240px', border: '1px solid var(--line)', borderRadius: '6px' } }, grid),
     (result.notes || []).length ? h('div', { class: 'note', style: { marginTop: '8px' } }, 'Notes: ', (result.notes || []).join(' · ')) : null),
     actions: [{ label: '◂ Back', onClick: (c) => { c(); discoverDialog(); } }, { label: 'Add to pending changes ▸', primary: true, onClick: async (c) => {
-      try { await api.addPending(entries); toast('added to the pending set', 'ok'); c(); await refreshModel(false); navigate('pending'); } catch (e) { toast(e.message, 'err'); }
+      try {
+        for (const e of entries) {
+          const remoteConfig = e.identity === 'platform.driver' && e.data ? e.data[remoteKeyOf(e.data)] : null;
+          if (remoteConfig) seedDefaults(remoteConfig, ((state.catalog || {}).interfaces || {})[remoteConfig.driver_type || e.data.driver_type]);
+        }
+        await api.addPending(entries); toast('added to the pending set', 'ok'); c(); await refreshModel(false); navigate('pending'); } catch (e) { toast(e.message, 'err'); }
     } }] });
 }

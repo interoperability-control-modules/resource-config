@@ -86,7 +86,7 @@ def test_agents_are_visible_with_status(logged_in):
     """The wildcard status/health routes need a selector; without one every agent was reported as hidden."""
     agents = {a['identity']: a for a in logged_in.get('/api/model').json()['agents']}
     assert agents['platform.driver']['hidden'] is False and agents['platform.driver']['running'] is True
-    assert agents['platform.driver']['pid'] == 100 and agents['platform.driver']['health']['status'] == 'GOOD'
+    assert agents['platform.driver']['pid'] == 100 and agents['platform.presentation']['health']['message'] == 'GOOD'
     assert agents['platform.web']['hidden'] is True
 
 
@@ -120,3 +120,53 @@ def test_websocket_without_session_closes_with_4401(ui):
 def test_catalog_carries_the_openfmb_editions(logged_in):
     openfmb = logged_in.get('/api/catalog').json().get('openfmb') or {}
     assert openfmb.get('latest') and openfmb['latest'] in openfmb.get('editions', [])
+
+
+def test_transform_cells_are_validated_with_the_drivers_library(logged_in):
+    """A registry Transform cell is compiled exactly as the driver framework reads it."""
+    r = logged_in.post('/api/interop/validate_transforms', json={'texts': ['scale(0.001)', 'transform(sunssf(W_SF), round(1))', 'scale(0.1), add(1)', 'nosuch(2)', 'sum_of(a, b)']})
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out['scale(0.001)'] == {'ok': True, 'functions': ['scale'], 'references': [], 'result_type': 'float', 'invertible': True, 'non_invertible': [], 'defines_value': False, 'fidelity': 1.0}
+    assert out['transform(sunssf(W_SF), round(1))']['references'] == ['W_SF'] and out['transform(sunssf(W_SF), round(1))']['functions'] == ['sunssf', 'round']
+    assert out['scale(0.1), add(1)']['ok'] is False and 'transform(f1' in out['scale(0.1), add(1)']['error']
+    assert out['nosuch(2)'] == {'ok': False, 'error': "value: unknown transform function 'nosuch'.", 'unknown_function': 'nosuch'}
+    assert out['sum_of(a, b)']['defines_value'] is True and out['sum_of(a, b)']['references'] == ['a', 'b'] and out['sum_of(a, b)']['invertible'] is False
+
+
+def test_transform_functions_are_listed_for_completion(logged_in):
+    r = logged_in.get('/api/interop/transform_functions')
+    assert r.status_code == 200, r.text
+    by_name = {f['name']: f for f in r.json()}
+    assert by_name['sunssf']['doc'].startswith('Scale by a SunSpec scale factor') and by_name['equals']['aliases'] == ['eq']
+    assert by_name['scale_int']['result_type'] == 'int' and by_name['scale_int']['fidelity'] == 0.9
+    assert 'literal' in by_name and 'reg_name' in by_name and by_name['sum_of']['signature'] == '(*args)'
+
+
+def test_validation_needs_a_login(ui):
+    assert ui.post('/api/interop/validate_transforms', json={'texts': ['scale(1)']}).status_code in (401, 403)
+
+
+def test_two_discoveries_pending_at_once_both_reach_the_service_config(logged_in):
+    """Each Discover adds to the service's one config entry. Pending together, the second must not replace the first:
+    the fragments are merged on the pending entry and folded into the entry as it stands when applied."""
+    first = logged_in.post('/api/discover', json={'protocol': 'sunspec', 'options': {'topic': 'site9/pv_a', 'host': '10.0.0.21'}}).json()
+    assert logged_in.post('/api/pending', json=first['entries']).status_code == 200
+    second = logged_in.post('/api/discover', json={'protocol': 'sunspec', 'options': {'topic': 'site9/pv_b', 'host': '10.0.0.22'}}).json()
+    pending = logged_in.post('/api/pending', json=second['entries']).json()['entries']
+    service_entries = [e for e in pending if e['identity'] == 'platform.presentation']
+    assert len(service_entries) == 1 and service_entries[0]['fragment'] and '2 mappings' in service_entries[0]['summary']
+    assert logged_in.post('/api/pending/apply').status_code == 200
+    config = logged_in.get('/api/store/platform.presentation/config').json()['data']
+    topics = {'/'.join(m['uai']) for m in config['mappings']}
+    assert {'devices/site9/pv_a', 'devices/site9/pv_b'} <= topics, topics
+    model = logged_in.get('/api/model?refresh=true').json()
+    resources = {d['topic']: d['resource'] for d in model['devices']}
+    assert resources['site9/pv_a'] and resources['site9/pv_b'], 'both devices have their canonical resource'
+
+
+def test_model_carries_the_drivers_health_report(logged_in):
+    """The driver's health() RPC, per remote, rides on the model so the Devices and Agents tabs can show it."""
+    model = logged_in.get('/api/model?refresh=true').json()
+    assert model['driver_health_live'] and model['driver_health']['devices/matrix/SunSpec/client']['status'] == 'GOOD'
+    assert model['driver_health']['devices/matrix/DNP3/served']['last_error'] == 'no master connected'

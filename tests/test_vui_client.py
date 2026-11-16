@@ -19,7 +19,7 @@ async def test_wrong_password_is_auth_error(settings, client_factory):
 async def test_agents_with_status_health_and_hidden(vui):
     agents = {a.identity: a for a in await vui.list_agents()}
     assert agents['platform.driver'].running and agents['platform.driver'].name.startswith('volttron-platform-driver')
-    assert agents['platform.driver'].health == {'status': 'GOOD', 'context': 'polling'}
+    assert agents['platform.presentation'].health['message'] == 'GOOD' and agents['platform.presentation'].health['last_heartbeat'] and agents['platform.driver'].health == {}
     assert agents['platform.resource_bridge'].running is False and agents['platform.resource_bridge'].exit_code == 0
     assert agents['platform.web'].hidden and not agents['platform.driver'].hidden
 
@@ -42,7 +42,7 @@ async def test_config_entries_are_typed_from_their_text(vui):
     device = await vui.get_config('platform.driver', 'devices/matrix/SunSpec/client')
     assert device.type == 'json' and device.data['driver_type'] == 'modbus' and device.etag.startswith('"')
     registry = await vui.get_config('platform.driver', 'registry_configs/sunspec_client.csv')
-    assert registry.type == 'csv' and registry.data[0]['Point Name'] == '701_W' and len(registry.data) == 2
+    assert registry.type == 'csv' and registry.data[0]['Point Name'] == '701_W' and len(registry.data) == 3
 
 
 async def test_put_and_delete_round_trip(vui, fake_platform):
